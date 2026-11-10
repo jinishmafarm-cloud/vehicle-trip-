@@ -15,3 +15,34 @@
 .login-shell{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;background:#f3f7f4;place-items:stretch;font-family:Inter,Arial,sans-serif}
 .login-brand{background:linear-gradient(145deg,#0d5737,#16834e);color:white;padding:54px;display:flex;flex-direction:column;justify-content:space-between;min-height:100vh}.login-brand h1{font-size:clamp(30px,4vw,48px);line-height:1.13}.login-brand p{color:#d6eee0;line-height:1.7}.login-panel{align-self:center;justify-self:center;background:#fff;padding:42px;border-radius:20px;width:min(440px,calc(100% - 40px));box-shadow:0 15px 45px #173d2918}.login-panel label{display:block;margin:18px 0 7px;font-weight:600}.login-panel input{width:100%;padding:13px;border:1px solid #d7e1da;border-radius:9px;font:inherit}.login-panel button{width:100%;margin-top:22px;padding:14px;background:#117344;color:#fff;border:0;border-radius:9px;font-weight:700;cursor:pointer}.login-panel p{color:#6c7b72}.role-workspace{min-height:100vh}.hidden{display:none!important}
 @media(max-width:760px){.login-shell{grid-template-columns:1fr}.login-brand{min-height:230px;padding:28px}.login-brand h1{font-size:28px;margin:20px 0 8px}.login-panel{margin:28px auto}}
+
+/* === MAFARM ADMIN VISIBILITY + RESPONSIVE FIXES === */
+#adminWorkspace .sidebar{background:linear-gradient(180deg,#07532f,#033e26)!important;color:#fff!important;width:250px!important;display:flex!important;flex-direction:column!important;padding:0!important;border:0!important;position:fixed!important;inset:0 auto 0 0!important;z-index:50!important;overflow:hidden!important}
+#adminWorkspace .sidebar .brand{background:#fff!important;color:#07512e!important;min-height:70px!important;padding:0 22px!important;font-size:24px!important}
+#adminWorkspace .sidebar .nav-scroll{display:block!important;overflow-y:auto!important;flex:1!important;padding:12px 10px!important}
+#adminWorkspace .sidebar .nav-caption{color:#b9dfc5!important;font-size:10px!important;font-weight:800!important;letter-spacing:1px!important}
+#adminWorkspace .sidebar .nav-link{display:flex!important;width:100%!important;align-items:center!important;text-align:left!important;color:#f2fff5!important;background:transparent!important;opacity:1!important;font-size:13px!important;font-weight:650!important;padding:12px!important;margin:3px 0!important;border:0!important;border-radius:8px!important}
+#adminWorkspace .sidebar .nav-link svg{color:#eaffef!important;opacity:1!important;flex:none!important}
+#adminWorkspace .sidebar .nav-link:hover,#adminWorkspace .sidebar .nav-link.active{background:#168b49!important;color:#fff!important;box-shadow:0 4px 12px #002c1a55!important}
+#adminWorkspace .sidebar .nav-link:hover svg,#adminWorkspace .sidebar .nav-link.active svg{color:#fff!important}
+#adminWorkspace .side-foot{color:#fff!important;background:#033e26!important}
+#adminWorkspace .side-foot small{color:#c8e4d2!important}
+#adminWorkspace .main{margin-left:250px!important;min-width:0!important}
+#adminWorkspace .content{max-width:none!important;width:100%!important;padding:24px clamp(14px,2vw,30px)!important}
+#adminWorkspace .field label{font-size:13px!important;color:#25372c!important;font-weight:750!important}
+#adminWorkspace .field input,#adminWorkspace .field select,#adminWorkspace .field textarea,#adminWorkspace select,#adminWorkspace input{font-size:13px!important;color:#17251c!important;background:#fff!important;border:1px solid #aebfb3!important;min-height:42px!important;opacity:1!important}
+#adminWorkspace .field input::placeholder,#adminWorkspace input::placeholder{color:#78877d!important;opacity:1!important}
+#adminWorkspace .field select option{color:#17251c!important;background:#fff!important}
+#adminWorkspace .field input:focus,#adminWorkspace .field select:focus,#adminWorkspace .field textarea:focus{border-color:#087b3b!important;box-shadow:0 0 0 3px #087b3b20!important}
+#adminWorkspace .card{min-width:0!important}
+#adminWorkspace .table-scroll{max-width:100%!important;overflow-x:auto!important}
+#adminWorkspace .form-message{font-size:13px;color:#087b3b;font-weight:650;margin-top:12px}
+#adminWorkspace .form-footer small{max-width:560px;line-height:1.5;color:#526258;font-size:12px}
+@media(max-width:760px){
+ #adminWorkspace .sidebar{transform:translateX(-100%)!important;transition:transform .2s!important;width:270px!important}
+ #adminWorkspace .sidebar.open{transform:translateX(0)!important}
+ #adminWorkspace .main{margin-left:0!important}
+ #adminWorkspace .content{padding:14px 10px!important}
+ #adminWorkspace .form-grid{grid-template-columns:1fr!important}
+ #adminWorkspace .split{grid-template-columns:1fr!important}
+}
