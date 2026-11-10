@@ -10,6 +10,7 @@
     <button class="nav-link" data-page="trip-entry"><i data-lucide="route"></i>Admin Trip Entry</button>
     <button class="nav-link" data-page="trip-register"><i data-lucide="clipboard-list"></i>Trip Register</button>
     <div class="nav-caption">MASTER MANAGEMENT</div>
+    <button class="nav-link" data-page="user-management"><i data-lucide="user-cog"></i>User Management</button>
     <button class="nav-link" data-page="drivers"><i data-lucide="contact-round"></i>Driver Management</button>
     <button class="nav-link" data-page="employees"><i data-lucide="users"></i>Employee Management</button>
     <button class="nav-link" data-page="vehicles"><i data-lucide="car-front"></i>Vehicle Management</button>
@@ -84,9 +85,9 @@
   <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="car-front"></i></span><div><h2>Trip & Vehicle Details</h2><p>Choose the vehicle and driver for this trip.</p></div></div>
    <div class="form-grid">
     <div class="field"><label>Vehicle Number <b>*</b></label><select id="adminVehicle" required><option value="">Select vehicle</option><option data-km="56320">KL 07 AB 4581</option><option data-km="42850">KL 07 CD 7723</option><option data-km="71240">KL 07 EF 3366</option><option data-km="38110">KL 07 GH 8899</option></select></div>
-    <div class="field"><label>Driver <b>*</b></label><select required><option value="">Select driver</option><option>Rajesh K (DRV001)</option><option>Suresh M (DRV002)</option><option>Biju P (DRV003)</option><option>Manoj K (DRV004)</option></select></div>
-    <div class="field"><label>Department <b>*</b></label><select required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
-    <div class="field"><label>Requested Employee <b>*</b></label><select required><option value="">Select employee</option><option>Anil Kumar (EMP012)</option><option>Vishnu K S (EMP014)</option><option>Arun P (EMP008)</option><option>Other / Manual Entry</option></select></div>
+    <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option><option>Rajesh K (DRV001)</option><option>Suresh M (DRV002)</option><option>Biju P (DRV003)</option><option>Manoj K (DRV004)</option></select></div>
+    <div class="field"><label>Department <b>*</b></label><select id="adminDepartmentSelect" required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option><option>Anil Kumar (EMP012)</option><option>Vishnu K S (EMP014)</option><option>Arun P (EMP008)</option><option>Other / Manual Entry</option></select></div>
     <div class="field"><label>Trip Date <b>*</b></label><input type="date" required></div>
     <div class="field"><label>Trip Purpose <b>*</b></label><input placeholder="e.g. Material delivery" required></div>
    </div>
@@ -119,6 +120,32 @@
 </section>
 
 <!-- DRIVERS -->
+<!-- USER MANAGEMENT -->
+<section class="page" id="page-user-management">
+ <div class="page-head"><div><div class="eyebrow">ACCESS CONTROL</div><h1>User Management</h1><p>Create Admin and Driver login accounts and manage access details.</p></div><span class="page-badge">User Master</span></div>
+ <div class="split">
+  <form id="managedUserForm" class="card form-card">
+   <div class="card-title"><h2><i data-lucide="user-plus"></i> Add New User</h2></div>
+   <div class="form-grid">
+    <div class="field"><label>User ID <b>*</b></label><input id="newUserId" required placeholder="e.g. DRV019"></div>
+    <div class="field"><label>Employee Name <b>*</b></label><input id="newUserName" required placeholder="Full name"></div>
+    <div class="field"><label>Role <b>*</b></label><select id="newUserRole" required><option value="">Select role</option><option value="driver">Driver</option><option value="admin">Admin</option></select></div>
+    <div class="field"><label>Email <b>*</b></label><input id="newUserEmail" type="email" required placeholder="name@mafarm.in"></div>
+    <div class="field"><label>Temporary Password <b>*</b></label><input id="newUserPassword" type="password" minlength="8" required placeholder="Minimum 8 characters"></div>
+    <div class="field"><label>Mobile Number</label><input id="newUserMobile" type="tel" placeholder="Mobile number"></div>
+    <div class="field"><label>Department</label><select id="newUserDepartment"><option value="">Select department</option><option>Operations</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Driver ID (if Driver)</label><input id="newUserDriverId" placeholder="DRV019"></div>
+    <div class="field"><label>Assigned Vehicle (optional)</label><input id="newUserVehicle" placeholder="KL 07 AB 1234"></div>
+   </div>
+   <div class="form-footer"><small>Account credentials are created through secure Firebase Cloud Functions. Passwords are never stored in Firestore.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Create User Account</button></div></div>
+   <p id="managedUserMessage" class="form-message" aria-live="polite"></p>
+  </form>
+  <section class="card">
+   <div class="card-title"><div><h2><i data-lucide="users"></i> Registered Users</h2><p>Accounts currently saved in Firestore.</p></div><button class="outline-btn" type="button" id="refreshUsersBtn">Refresh</button></div>
+   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="5">Loading user records…</td></tr></tbody></table></div>
+  </section>
+ </div>
+</section>
 <section class="page" id="page-drivers">
  <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Driver Management</h1><p>Create and maintain driver profiles and login access.</p></div><span class="page-badge">Driver Master</span></div>
  <div class="split">
