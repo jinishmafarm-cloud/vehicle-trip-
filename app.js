@@ -9,7 +9,9 @@ const $=id=>document.getElementById(id);
 function showRole(role){$("loginPage").style.display="none";$("adminWorkspace").style.display=role==="admin"?"block":"none";$("driverWorkspace").style.display=role==="driver"?"block":"none";if(role==="admin"){if(window.lucide)lucide.createIcons();initAdminUI();}else{initDriverUI();}}
 $("mainLoginForm").addEventListener("submit",async e=>{e.preventDefault();const b=$("mainLoginBtn"),m=$("mainLoginMessage");b.disabled=true;m.textContent="Signing in…";try{let id=$("mainIdentity").value.trim();if(id==="150884")id="operationhead@mafarm.in";const cred=await signInWithEmailAndPassword(auth,id,$("mainPassword").value);const snap=await getDoc(doc(db,"User",cred.user.uid));if(!snap.exists())throw Error("Account profile not provisioned. Ask the administrator.");const p=snap.data(),role=String(p.role||p.Role||"").toLowerCase();if(p.active===false||p.Active===false||!["admin","driver"].includes(role))throw Error("Account inactive or role not permitted.");showRole(role);}catch(err){m.textContent=err.code==="auth/invalid-credential"?"Invalid User ID/email or password.":err.message;}finally{b.disabled=false;b.textContent="Sign in";}});
 onAuthStateChanged(auth,async user=>{if(!user){$("loginPage").style.display="grid";$("adminWorkspace").style.display="none";$("driverWorkspace").style.display="none";return;}try{const snap=await getDoc(doc(db,"User",user.uid));if(!snap.exists())throw Error("Profile not found");const role=String(snap.data().role||snap.data().Role||"").toLowerCase();if(!["admin","driver"].includes(role))throw Error("Access denied");showRole(role);}catch(e){await signOut(auth);}});
-function initAdminUI(){\nif(window._mafarmAdminInitialized)return;window._mafarmAdminInitialized=true;\nconst $=id=>document.getElementById(id);
+function initAdminUI(){
+if(window._mafarmAdminInitialized)return;window._mafarmAdminInitialized=true;
+const $=id=>document.getElementById(id);
 function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("show");clearTimeout(window._toast);window._toast=setTimeout(()=>el.classList.remove("show"),2600)}
 function go(page){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$("page-"+page)?.classList.add("active");document.querySelectorAll(".nav-link").forEach(b=>b.classList.toggle("active",b.dataset.page===page));if(innerWidth<760)$("sidebar").classList.remove("open");scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
@@ -32,7 +34,11 @@ $("dashSearch").addEventListener("input",filterDash);$("dashStatus").addEventLis
 function filterDash(){const q=$("dashSearch").value.toLowerCase(),s=$("dashStatus").value;[...$("latestTrips").rows].forEach(r=>{const matchText=r.textContent.toLowerCase().includes(q),matchStatus=!s||r.textContent.includes(s);r.style.display=matchText&&matchStatus?"":"none"})}
 $("tripSearch").addEventListener("input",e=>{[...$("tripRegisterBody").rows].forEach(r=>r.style.display=r.textContent.toLowerCase().includes(e.target.value.toLowerCase())?"":"none")});
 if(window.lucide)lucide.createIcons();
-\n}\nfunction initDriverUI(){\nif(window._mafarmDriverInitialized)return;window._mafarmDriverInitialized=true;\nimport { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+
+}
+function initDriverUI(){
+if(window._mafarmDriverInitialized)return;window._mafarmDriverInitialized=true;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore,doc,getDoc,collection,query,where,getDocs,addDoc,serverTimestamp,limit } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { getFunctions,httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
@@ -52,4 +58,5 @@ $("endTripForm").addEventListener("submit",async e=>{e.preventDefault();try{if(!
 $("fuelForm").addEventListener("submit",async e=>{e.preventDefault();try{await addDoc(collection(db,"Fuel"),{driverUid:auth.currentUser.uid,driverName:$("fuelDriver").value,vehicleNo:$("fuelVehicle").value,date:$("fuelDate").value,litres:Number($("fuelLitres").value),amount:Number($("fuelAmount").value),odometerKm:Number($("fuelKm").value),remarks:$("fuelRemarks").value,createdAt:serverTimestamp()});$("fuelMessage").textContent="Fuel entry saved.";e.target.reset();}catch(err){$("fuelMessage").textContent="Unable to save fuel entry: "+err.message;}});
 document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$(b.dataset.view).classList.remove("hidden");$("welcomeTitle").textContent=b.dataset.view==="fuelView"?"Fuel Entry":"Trip Entry";}));
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-\n}
+
+}
