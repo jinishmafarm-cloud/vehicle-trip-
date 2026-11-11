@@ -691,6 +691,7 @@ $("employeeForm")?.addEventListener("submit", async event => {
    16. DROPDOWN MANAGEMENT
 ========================================================= */
 
+
 function populateSelect(
   id,
   items,
@@ -698,26 +699,32 @@ function populateSelect(
   labelKey,
   placeholder
 ) {
-
   const select = $(id);
   if (!select) return;
 
   const oldValue = select.value;
 
-  select.innerHTML =
-    `<option value="">${safe(placeholder)}</option>`;
+  select.innerHTML = "";
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = placeholder;
+  select.appendChild(defaultOption);
 
   items.forEach(item => {
-
     const value = valueOf(item, [valueKey], item.id);
     const label = valueOf(item, [labelKey], value);
 
-    select.innerHTML += `
-      <option value="${safe(value)}">${safe(label)}</option>
-    `;
+    const option = document.createElement("option");
+    option.value = String(value);
+    option.textContent = String(label);
+
+    select.appendChild(option);
   });
 
-  if ([...select.options].some(option => option.value === oldValue)) {
+  const options = Array.from(select.options);
+
+  if (options.some(option => option.value === oldValue)) {
     select.value = oldValue;
   }
 }
