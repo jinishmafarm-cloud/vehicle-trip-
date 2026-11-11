@@ -1,4 +1,10 @@
 
+/* =========================================================
+   MAFARM VEHICLE TRIP MANAGEMENT
+   Complete Firebase Application JavaScript
+   Firebase SDK: 10.14.1
+========================================================= */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 
 import {
@@ -43,7 +49,7 @@ const db = getFirestore(app);
 
 
 /* =========================================================
-   2. COMMON FUNCTIONS
+   2. GLOBAL VARIABLES
 ========================================================= */
 
 const $ = id => document.getElementById(id);
@@ -56,6 +62,19 @@ let employeeData = [];
 let driverData = [];
 
 let activeTripId = null;
+
+const COLLECTIONS = {
+  trips: "Trips",
+  vehicles: "Vehicles",
+  employees: "Employees",
+  users: "User",
+  fuel: "Fuel"
+};
+
+
+/* =========================================================
+   3. COMMON FUNCTIONS
+========================================================= */
 
 function valueOf(obj, keys, fallback = "") {
   for (const key of keys) {
@@ -94,29 +113,28 @@ function setLoading(button, loading, originalText = "Submit") {
 function getToday() {
   const now = new Date();
   const offset = now.getTimezoneOffset();
+
   return new Date(now.getTime() - offset * 60000)
     .toISOString()
     .slice(0, 10);
 }
 
-function formatDate(value) {
-  if (!value) return "-";
-
-  if (value.toDate) {
-    value = value.toDate();
-  }
-
-  const date = new Date(value);
-
-  if (isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleDateString("en-IN");
+function isAdmin() {
+  return String(
+    valueOf(currentProfile, ["role", "Role"], "")
+  ).toLowerCase() === "admin";
 }
 
-function formatTime(value) {
-  if (!value) return "-";
-  return String(value);
+function isDriver() {
+  return String(
+    valueOf(currentProfile, ["role", "Role"], "")
+  ).toLowerCase() === "driver";
 }
+
+
+/* =========================================================
+   4. SCREEN MANAGEMENT
+========================================================= */
 
 function showLogin() {
   if ($("loginSection")) $("loginSection").hidden = false;
@@ -136,99 +154,6 @@ function showDriver() {
   if ($("appPage")) $("appPage").hidden = false;
 }
 
-function isAdmin() {
-  return String(valueOf(currentProfile, ["role", "Role"], ""))
-    .toLowerCase() === "admin";
-}
-
-function isDriver() {
-  return String(valueOf(currentProfile, ["role", "Role"], ""))
-    .toLowerCase() === "driver";
-}
-
-
-/* =========================================================
-   3. LOGIN
-========================================================= */
-
-function resolveLoginIdentity(identity) {
-  const cleaned = identity.trim();
-
-  // Initial administrator login mapping
-  if (cleaned === "150884") {
-    return "operationhead@mafarm.in";
-  }
-
-  // Other users should use their registered email address
-  return cleaned;
-}
-
-const loginForm = $("mainLoginForm");
-
-if (loginForm) {
-  loginForm.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const identity = $("mainIdentity")?.value.trim();
-    const password = $("mainPassword")?.value;
-
-    if (!identity || !password) {
-      showMessage("mainLoginMessage", "Enter User ID / Email and Password.", "error");
-      return;
-    }
-
-    const button = $("mainLoginBtn");
-    setLoading(button, true, "Login");
-
-    try {
-      const email = resolveLoginIdentity(identity);
-
-      const credential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      const profileRef = doc(db, "User", credential.user.uid);
-      const profileSnap = await getDoc(profileRef);
-
-      if (!profileSnap.exists()) {
-        await signOut(auth);
-        throw new Error(
-          "User profile not found. Please check the User collection and document UID."
-        );
-      }
-
-      const profile = profileSnap.data();
-
-      if (profile.active === false || profile.Active === false) {
-        await signOut(auth);
-        throw new Error("Your account is inactive. Contact the administrator.");
-      }
-
-      currentUser = credential.user;
-      currentProfile = profile;
-
-      openUserWorkspace();
-
-    } catch (error) {
-      console.error(error);
-      showMessage(
-        "mainLoginMessage",
-        error.message || "Login failed. Please check your credentials.",
-        "error"
-      );
-    } finally {
-      setLoading(button, false, "Login");
-    }
-  });
-}
-
-
-/* =========================================================
-   4. AUTH SESSION
-========================================================= */
-
 function openUserWorkspace() {
   if (!currentUser || !currentProfile) return;
 
@@ -241,6 +166,7 @@ function openUserWorkspace() {
   } else {
     signOut(auth);
     showLogin();
+
     showMessage(
       "mainLoginMessage",
       "Your account role is not authorised.",
@@ -248,6 +174,110 @@ function openUserWorkspace() {
     );
   }
 }
+
+
+/* =========================================================
+   5. FIRESTORE COLLECTION READER
+========================================================= */
+
+async function getCollectionData(collectionName) {
+  const snapshot = await getDocs(
+    collection(db, collectionName)
+  );
+
+  return snapshot.docs.map(item => ({
+    id: item.id,
+    ...item.data()
+  }));
+}
+
+
+/* =========================================================
+   6. LOGIN
+========================================================= */
+
+function resolveLoginIdentity(identity) {
+  const cleaned = identity.trim();
+
+  if (cleaned === "150884") {
+    return "operationhead@mafarm.in";
+  }
+
+  return cleaned;
+}
+
+$("mainLoginForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const identity = $("mainIdentity")?.value.trim();
+  const password = $("mainPassword")?.value;
+
+  if (!identity || !password) {
+    showMessage(
+      "mainLoginMessage",
+      "Enter User ID / Email and Password.",
+      "error"
+    );
+    return;
+  }
+
+  const button = $("mainLoginBtn");
+  setLoading(button, true, "Login");
+
+  try {
+    const email = resolveLoginIdentity(identity);
+
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    const profileRef = doc(
+      db,
+      "User",
+      credential.user.uid
+    );
+
+    const profileSnap = await getDoc(profileRef);
+
+    if (!profileSnap.exists()) {
+      await signOut(auth);
+
+      throw new Error(
+        "User profile not found. Check User collection and Authentication UID."
+      );
+    }
+
+    const profile = profileSnap.data();
+
+    if (profile.active === false || profile.Active === false) {
+      await signOut(auth);
+      throw new Error("Your account is inactive.");
+    }
+
+    currentUser = credential.user;
+    currentProfile = profile;
+
+    openUserWorkspace();
+
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
+
+    showMessage(
+      "mainLoginMessage",
+      error.message || "Login failed.",
+      "error"
+    );
+  } finally {
+    setLoading(button, false, "Login");
+  }
+});
+
+
+/* =========================================================
+   7. AUTHENTICATION SESSION
+========================================================= */
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
@@ -258,7 +288,9 @@ onAuthStateChanged(auth, async user => {
   }
 
   try {
-    const profileSnap = await getDoc(doc(db, "User", user.uid));
+    const profileSnap = await getDoc(
+      doc(db, "User", user.uid)
+    );
 
     if (!profileSnap.exists()) {
       await signOut(auth);
@@ -280,22 +312,22 @@ onAuthStateChanged(auth, async user => {
     openUserWorkspace();
 
   } catch (error) {
-    console.error("Session profile error:", error);
+    console.error("AUTH SESSION ERROR:", error);
     showLogin();
   }
 });
 
 
 /* =========================================================
-   5. LOGOUT
+   8. LOGOUT
 ========================================================= */
 
 async function logoutUser() {
   try {
     await signOut(auth);
   } catch (error) {
-    console.error(error);
-    alert("Unable to logout. Please try again.");
+    console.error("LOGOUT ERROR:", error);
+    alert("Unable to logout.");
   }
 }
 
@@ -304,7 +336,7 @@ $("logoutBtn")?.addEventListener("click", logoutUser);
 
 
 /* =========================================================
-   6. ADMIN NAVIGATION
+   9. ADMIN NAVIGATION
 ========================================================= */
 
 function openAdminPage(pageName) {
@@ -325,9 +357,7 @@ function openAdminPage(pageName) {
     );
   });
 
-  if ($("sidebar")) {
-    $("sidebar").classList.remove("open");
-  }
+  $("sidebar")?.classList.remove("open");
 }
 
 document.querySelectorAll(".nav-link[data-page]").forEach(link => {
@@ -348,64 +378,120 @@ $("menuToggle")?.addEventListener("click", () => {
 
 
 /* =========================================================
-   7. LOAD ADMIN DASHBOARD
+   10. DASHBOARD - INDIVIDUAL COLLECTION LOADING
 ========================================================= */
 
-async function getCollectionData(collectionName) {
-  const snapshot = await getDocs(collection(db, collectionName));
-
-  return snapshot.docs.map(document => ({
-    id: document.id,
-    ...document.data()
-  }));
-}
-
 async function loadAdminDashboard() {
-  try {
-    const [trips, vehicles, employees, users, fuel] =
-      await Promise.all([
-        getCollectionData("Trips"),
-        getCollectionData("Vehicles"),
-        getCollectionData("Employees"),
-        getCollectionData("User"),
-        getCollectionData("Fuel")
-      ]);
 
-    vehicleData = vehicles;
-    employeeData = employees;
-    driverData = users.filter(user =>
-      String(valueOf(user, ["role", "Role"], "")).toLowerCase() === "driver"
+  console.log("MAFARM Dashboard loading started.");
+
+  const results = {
+    Trips: [],
+    Vehicles: [],
+    Employees: [],
+    User: [],
+    Fuel: []
+  };
+
+  const failedCollections = [];
+
+  for (const name of Object.values(COLLECTIONS)) {
+
+    try {
+      results[name] = await getCollectionData(name);
+
+      console.log(
+        "SUCCESS:",
+        name,
+        results[name].length,
+        "records"
+      );
+
+    } catch (error) {
+
+      failedCollections.push(name);
+
+      console.error(
+        "FAILED COLLECTION:",
+        name
+      );
+
+      console.error(
+        "Firebase error code:",
+        error.code
+      );
+
+      console.error(
+        "Firebase error message:",
+        error.message
+      );
+    }
+  }
+
+  vehicleData = results.Vehicles;
+  employeeData = results.Employees;
+
+  driverData = results.User.filter(user =>
+    String(
+      valueOf(user, ["role", "Role"], "")
+    ).toLowerCase() === "driver"
+  );
+
+  updateDashboard(
+    results.Trips,
+    results.Vehicles,
+    results.Employees,
+    results.Fuel
+  );
+
+  renderLatestTrips(results.Trips);
+  renderTripRegister(results.Trips);
+  renderVehicles(results.Vehicles);
+  renderEmployees(results.Employees);
+  renderManagedUsers(results.User);
+
+  populateAdminDropdowns();
+
+  if (failedCollections.length > 0) {
+
+    console.error(
+      "COLLECTIONS WITH ERRORS:",
+      failedCollections.join(", ")
     );
 
-    updateDashboard(trips, vehicles, employees, fuel);
+    alert(
+      "Dashboard loaded partially.\n\n" +
+      "Collections with errors: " +
+      failedCollections.join(", ") +
+      "\n\nPress F12 and open Console for details."
+    );
 
-    renderLatestTrips(trips);
-    renderTripRegister(trips);
-    renderVehicles(vehicles);
-    renderEmployees(employees);
-    renderManagedUsers(users);
-
-    populateAdminDropdowns();
-
-  } catch (error) {
-    console.error("Dashboard loading error:", error);
-    alert("Unable to load dashboard data. Please check Firestore permissions.");
+  } else {
+    console.log("All dashboard collections loaded successfully.");
   }
 }
 
+
+/* =========================================================
+   11. DASHBOARD COUNTS
+========================================================= */
+
 function updateDashboard(trips, vehicles, employees, fuel) {
+
   const today = getToday();
 
-  const todayTrips = trips.filter(trip =>
-    trip.tripDate === today
+  const todayTrips = trips.filter(
+    trip => trip.tripDate === today
   );
 
-  const activeTrips = trips.filter(trip =>
-    String(trip.status || "").toLowerCase() === "active"
+  const activeTrips = trips.filter(
+    trip => String(trip.status || "").toLowerCase() === "active"
   );
 
-  const totalFuel = fuel.reduce((sum, item) =>
-    sum + Number(valueOf(item, ["litres", "fuelLitres"], 0)), 0
+  const totalFuel = fuel.reduce(
+    (sum, item) =>
+      sum + Number(valueOf(item, ["litres", "fuelLitres"], 0)),
+    0
   );
 
   if ($("totalTrips")) $("totalTrips").textContent = trips.length;
@@ -416,11 +502,17 @@ function updateDashboard(trips, vehicles, employees, fuel) {
   if ($("totalFuel")) $("totalFuel").textContent = totalFuel.toFixed(2);
 }
 
+
+/* =========================================================
+   12. LATEST TRIPS
+========================================================= */
+
 function renderLatestTrips(trips) {
+
   const tbody = $("latestTrips");
   if (!tbody) return;
 
-  const latest = [...trips].slice(-10).reverse();
+  const latest = [...trips].reverse().slice(0, 10);
 
   tbody.innerHTML = latest.map(trip => `
     <tr>
@@ -433,7 +525,13 @@ function renderLatestTrips(trips) {
   `).join("");
 }
 
+
+/* =========================================================
+   13. TRIP REGISTER
+========================================================= */
+
 function renderTripRegister(trips) {
+
   const tbody = $("tripRegisterBody");
   if (!tbody) return;
 
@@ -452,37 +550,53 @@ function renderTripRegister(trips) {
 
 
 /* =========================================================
-   8. VEHICLE MANAGEMENT
+   14. VEHICLE MANAGEMENT
 ========================================================= */
 
 function renderVehicles(vehicles) {
+
   const tbody = $("vehicleTableBody");
   if (!tbody) return;
 
   tbody.innerHTML = vehicles.map(vehicle => `
     <tr>
-      <td>${safe(valueOf(vehicle, ["vehicleNo", "vehicleNumber", "registrationNumber"], vehicle.id))}</td>
-      <td>${safe(valueOf(vehicle, ["vehicleType", "type"], "-"))}</td>
-      <td>${safe(valueOf(vehicle, ["currentKm", "initialKm"], 0))}</td>
+      <td>${safe(valueOf(
+        vehicle,
+        ["vehicleNo", "vehicleNumber", "registrationNumber"],
+        vehicle.id
+      ))}</td>
+      <td>${safe(valueOf(
+        vehicle,
+        ["vehicleType", "type"],
+        "-"
+      ))}</td>
+      <td>${safe(valueOf(
+        vehicle,
+        ["currentKm", "initialKm"],
+        0
+      ))}</td>
       <td>${vehicle.active === false ? "Inactive" : "Active"}</td>
     </tr>
   `).join("");
 }
 
 $("vehicleMasterForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
 
+  event.preventDefault();
   if (!isAdmin()) return;
 
   const button = event.submitter;
   setLoading(button, true, "Save Vehicle");
 
   try {
+
     const vehicleNo = $("vehicleNumber")?.value.trim();
     const vehicleType = $("vehicleType")?.value.trim();
     const initialKm = Number($("vehicleInitialKm")?.value || 0);
 
-    if (!vehicleNo) throw new Error("Enter vehicle number.");
+    if (!vehicleNo) {
+      throw new Error("Enter vehicle number.");
+    }
 
     await addDoc(collection(db, "Vehicles"), {
       vehicleNo,
@@ -498,11 +612,12 @@ $("vehicleMasterForm")?.addEventListener("submit", async event => {
     event.target.reset();
 
     vehicleData = await getCollectionData("Vehicles");
+
     renderVehicles(vehicleData);
     populateAdminDropdowns();
 
   } catch (error) {
-    console.error(error);
+    console.error("VEHICLE SAVE ERROR:", error);
     alert(error.message || "Vehicle saving failed.");
   } finally {
     setLoading(button, false, "Save Vehicle");
@@ -511,16 +626,17 @@ $("vehicleMasterForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   9. EMPLOYEE MANAGEMENT
+   15. EMPLOYEE MANAGEMENT
 ========================================================= */
 
 function renderEmployees(employees) {
+
   const tbody = $("employeeTableBody");
   if (!tbody) return;
 
   tbody.innerHTML = employees.map(employee => `
     <tr>
-      <td>${safe(valueOf(employee, ["employeeId", "id"], "-"))}</td>
+      <td>${safe(valueOf(employee, ["employeeId"], employee.id))}</td>
       <td>${safe(valueOf(employee, ["name", "employeeName"], "-"))}</td>
       <td>${safe(valueOf(employee, ["department"], "-"))}</td>
     </tr>
@@ -528,14 +644,15 @@ function renderEmployees(employees) {
 }
 
 $("employeeForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
 
+  event.preventDefault();
   if (!isAdmin()) return;
 
   const button = event.submitter;
   setLoading(button, true, "Save Employee");
 
   try {
+
     const employeeId = $("employeeId")?.value.trim();
     const name = $("employeeName")?.value.trim();
     const department = $("employeeDepartment")?.value.trim();
@@ -557,11 +674,12 @@ $("employeeForm")?.addEventListener("submit", async event => {
     event.target.reset();
 
     employeeData = await getCollectionData("Employees");
+
     renderEmployees(employeeData);
     populateAdminDropdowns();
 
   } catch (error) {
-    console.error(error);
+    console.error("EMPLOYEE SAVE ERROR:", error);
     alert(error.message || "Employee saving failed.");
   } finally {
     setLoading(button, false, "Save Employee");
@@ -570,18 +688,27 @@ $("employeeForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   10. DROPDOWN POPULATION
+   16. DROPDOWN MANAGEMENT
 ========================================================= */
 
-function populateSelect(id, items, valueKey, labelKey, placeholder) {
+function populateSelect(
+  id,
+  items,
+  valueKey,
+  labelKey,
+  placeholder
+) {
+
   const select = $(id);
   if (!select) return;
 
   const oldValue = select.value;
 
-  select.innerHTML = `<option value="">${safe(placeholder)}</option>`;
+  select.innerHTML =
+    `<option value="">${safe(placeholder)}</option>`;
 
   items.forEach(item => {
+
     const value = valueOf(item, [valueKey], item.id);
     const label = valueOf(item, [labelKey], value);
 
@@ -596,12 +723,13 @@ function populateSelect(id, items, valueKey, labelKey, placeholder) {
 }
 
 function populateAdminDropdowns() {
-  const activeVehicles = vehicleData.filter(vehicle =>
-    vehicle.active !== false
+
+  const activeVehicles = vehicleData.filter(
+    vehicle => vehicle.active !== false
   );
 
-  const activeEmployees = employeeData.filter(employee =>
-    employee.active !== false
+  const activeEmployees = employeeData.filter(
+    employee => employee.active !== false
   );
 
   populateSelect(
@@ -663,20 +791,22 @@ function populateAdminDropdowns() {
 
 
 /* =========================================================
-   11. ADMIN TRIP ENTRY
+   17. ADMIN TRIP ENTRY
 ========================================================= */
 
 $("adminTripForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
 
+  event.preventDefault();
   if (!isAdmin()) return;
 
   const button = event.submitter;
   setLoading(button, true, "Save Trip");
 
   try {
+
     const driverUid = $("adminDriverSelect")?.value;
     const vehicleNo = $("adminVehicle")?.value;
+
     const openingKm = Number($("adminOpeningKm")?.value);
     const closingKm = Number($("adminClosingKm")?.value);
 
@@ -688,35 +818,54 @@ $("adminTripForm")?.addEventListener("submit", async event => {
       throw new Error("Closing KM cannot be less than Opening KM.");
     }
 
-    const driver = driverData.find(item => item.id === driverUid);
+    const driver = driverData.find(
+      item => item.id === driverUid
+    );
 
     await addDoc(collection(db, "Trips"), {
+
       driverUid,
-      driverName: valueOf(driver, ["name", "employeeName"], ""),
+
+      driverName: valueOf(
+        driver,
+        ["name", "employeeName", "Name"],
+        ""
+      ),
+
       vehicleNo,
+
       tripDate: $("adminTripDate")?.value || getToday(),
       startTime: $("adminStartTime")?.value || "",
       endTime: $("adminEndTime")?.value || "",
+
       from: $("adminFrom")?.value || "",
       to: $("adminTo")?.value || "",
+
       openingKm,
       closingKm,
       distanceKm: closingKm - openingKm,
+
       purpose: $("adminPurpose")?.value || "",
+
       status: "completed",
+
       createdBy: currentUser.uid,
       createdAt: serverTimestamp(),
       completedAt: serverTimestamp()
+
     });
 
     alert("Trip entry saved successfully.");
+
     event.target.reset();
 
     await loadAdminDashboard();
 
   } catch (error) {
-    console.error(error);
+
+    console.error("ADMIN TRIP ERROR:", error);
     alert(error.message || "Trip saving failed.");
+
   } finally {
     setLoading(button, false, "Save Trip");
   }
@@ -724,10 +873,11 @@ $("adminTripForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   12. DRIVER WORKSPACE
+   18. DRIVER WORKSPACE
 ========================================================= */
 
 async function loadDriverWorkspace() {
+
   const name = valueOf(
     currentProfile,
     ["name", "employeeName", "Name"],
@@ -745,24 +895,28 @@ async function loadDriverWorkspace() {
 }
 
 async function loadDriverData() {
+
   try {
+
     vehicleData = await getCollectionData("Vehicles");
     employeeData = await getCollectionData("Employees");
 
     populateAdminDropdowns();
 
   } catch (error) {
-    console.error("Driver dropdown loading:", error);
+    console.error("DRIVER DATA ERROR:", error);
   }
 }
 
 
 /* =========================================================
-   13. DRIVER NAVIGATION
+   19. DRIVER NAVIGATION
 ========================================================= */
 
 document.querySelectorAll(".nav[data-view]").forEach(button => {
+
   button.addEventListener("click", () => {
+
     const view = button.dataset.view;
 
     document.querySelectorAll(".driver-view").forEach(section => {
@@ -774,15 +928,21 @@ document.querySelectorAll(".nav[data-view]").forEach(button => {
     document.querySelectorAll(".nav[data-view]").forEach(item => {
       item.classList.toggle("active", item === button);
     });
+
   });
+
 });
 
 
 /* =========================================================
-   14. DESTINATION MANAGEMENT
+   20. DESTINATION ROWS
 ========================================================= */
 
-function addDestinationRow(containerId, placeholder = "Enter destination") {
+function addDestinationRow(
+  containerId,
+  placeholder = "Enter destination"
+) {
+
   const container = $(containerId);
   if (!container) return;
 
@@ -797,6 +957,7 @@ function addDestinationRow(containerId, placeholder = "Enter destination") {
   const remove = document.createElement("button");
   remove.type = "button";
   remove.textContent = "Remove";
+
   remove.addEventListener("click", () => row.remove());
 
   row.append(input, remove);
@@ -812,31 +973,41 @@ $("addClosingDestination")?.addEventListener("click", () => {
 });
 
 function getDestinations(containerId) {
-  return [...($(containerId)?.querySelectorAll("input") || [])]
+
+  return [
+    ...($(containerId)?.querySelectorAll("input") || [])
+  ]
     .map(input => input.value.trim())
     .filter(Boolean);
 }
 
 
 /* =========================================================
-   15. START DRIVER TRIP
+   21. START DRIVER TRIP
 ========================================================= */
 
 $("tripForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
 
+  event.preventDefault();
   if (!isDriver()) return;
 
   const button = event.submitter;
   setLoading(button, true, "Start Trip");
 
   try {
+
     const vehicleNo = $("vehicle")?.value;
     const openingKm = Number($("openingKm")?.value);
+
     const destinations = getDestinations("destinationList");
 
-    if (!vehicleNo) throw new Error("Select a vehicle.");
-    if (!destinations.length) throw new Error("Enter at least one destination.");
+    if (!vehicleNo) {
+      throw new Error("Select a vehicle.");
+    }
+
+    if (!destinations.length) {
+      throw new Error("Enter at least one destination.");
+    }
 
     const activeQuery = query(
       collection(db, "Trips"),
@@ -848,41 +1019,64 @@ $("tripForm")?.addEventListener("submit", async event => {
     const existing = await getDocs(activeQuery);
 
     if (!existing.empty) {
-      throw new Error("You already have an active trip. Complete it first.");
+      throw new Error(
+        "You already have an active trip. Complete it first."
+      );
     }
 
-    const tripRef = await addDoc(collection(db, "Trips"), {
-      driverUid: currentUser.uid,
-      driverName: $("driverName")?.value || "",
-      vehicleNo,
-      openingKm,
-      department: $("department")?.value || "",
-      requestedEmployee: $("requestedEmployee")?.value || "",
-      manualEmployee: $("manualEmployee")?.value || "",
-      tripDate: $("tripDate")?.value || getToday(),
-      startTime: $("startTime")?.value || "",
-      purpose: $("purpose")?.value || "",
-      destinations,
-      status: "active",
-      createdAt: serverTimestamp()
-    });
+    const tripRef = await addDoc(
+      collection(db, "Trips"),
+      {
+
+        driverUid: currentUser.uid,
+
+        driverName: valueOf(
+          currentProfile,
+          ["name", "employeeName", "Name"],
+          ""
+        ),
+
+        vehicleNo,
+        openingKm,
+
+        department: $("department")?.value || "",
+        requestedEmployee: $("requestedEmployee")?.value || "",
+        manualEmployee: $("manualEmployee")?.value || "",
+
+        tripDate: $("tripDate")?.value || getToday(),
+        startTime: $("startTime")?.value || "",
+        purpose: $("purpose")?.value || "",
+
+        destinations,
+
+        status: "active",
+
+        createdAt: serverTimestamp()
+
+      }
+    );
 
     activeTripId = tripRef.id;
 
     alert("Trip started successfully.");
 
-    $("tripForm").reset();
-    $("driverName").value = valueOf(
-      currentProfile,
-      ["name", "employeeName", "Name"],
-      ""
-    );
+    event.target.reset();
+
+    if ($("driverName")) {
+      $("driverName").value = valueOf(
+        currentProfile,
+        ["name", "employeeName", "Name"],
+        ""
+      );
+    }
 
     await checkActiveTrip();
 
   } catch (error) {
-    console.error(error);
-    alert(error.message || "Unable to start trip. Check Firestore rules.");
+
+    console.error("START TRIP ERROR:", error);
+    alert(error.message || "Unable to start trip.");
+
   } finally {
     setLoading(button, false, "Start Trip");
   }
@@ -890,11 +1084,13 @@ $("tripForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   16. CHECK ACTIVE TRIP
+   22. CHECK ACTIVE TRIP
 ========================================================= */
 
 async function checkActiveTrip() {
+
   try {
+
     const activeQuery = query(
       collection(db, "Trips"),
       where("driverUid", "==", currentUser.uid),
@@ -907,6 +1103,7 @@ async function checkActiveTrip() {
     const activeBox = $("activeTrip");
 
     if (snapshot.empty) {
+
       activeTripId = null;
 
       if (activeBox) activeBox.hidden = true;
@@ -932,16 +1129,17 @@ async function checkActiveTrip() {
     }
 
   } catch (error) {
-    console.error("Active trip loading error:", error);
+    console.error("ACTIVE TRIP ERROR:", error);
   }
 }
 
 
 /* =========================================================
-   17. COMPLETE DRIVER TRIP
+   23. COMPLETE DRIVER TRIP
 ========================================================= */
 
 $("endTripForm")?.addEventListener("submit", async event => {
+
   event.preventDefault();
 
   if (!isDriver() || !activeTripId) {
@@ -953,6 +1151,7 @@ $("endTripForm")?.addEventListener("submit", async event => {
   setLoading(button, true, "Complete Trip");
 
   try {
+
     const closingKm = Number($("closingKm")?.value);
     const endTime = $("endTime")?.value || "";
     const remarks = $("remarks")?.value || "";
@@ -967,26 +1166,34 @@ $("endTripForm")?.addEventListener("submit", async event => {
     const trip = tripSnap.data();
 
     if (closingKm < Number(trip.openingKm)) {
-      throw new Error("Closing KM cannot be less than Opening KM.");
+      throw new Error(
+        "Closing KM cannot be less than Opening KM."
+      );
     }
 
-    const additionalDestinations = getDestinations("closingDestinationList");
+    const additionalDestinations =
+      getDestinations("closingDestinationList");
 
     await updateDoc(tripRef, {
+
       closingKm,
       endTime,
       remarks,
       additionalDestinations,
+
       distanceKm: closingKm - Number(trip.openingKm),
+
       status: "completed",
+
       completedAt: serverTimestamp()
+
     });
 
     alert("Trip completed successfully.");
 
     activeTripId = null;
 
-    $("endTripForm").reset();
+    event.target.reset();
 
     if ($("closingDestinationList")) {
       $("closingDestinationList").innerHTML = "";
@@ -995,8 +1202,10 @@ $("endTripForm")?.addEventListener("submit", async event => {
     await checkActiveTrip();
 
   } catch (error) {
-    console.error(error);
-    alert(error.message || "Unable to complete trip. Check Firestore rules.");
+
+    console.error("COMPLETE TRIP ERROR:", error);
+    alert(error.message || "Unable to complete trip.");
+
   } finally {
     setLoading(button, false, "Complete Trip");
   }
@@ -1004,18 +1213,19 @@ $("endTripForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   18. DRIVER FUEL ENTRY
+   24. DRIVER FUEL ENTRY
 ========================================================= */
 
 $("fuelForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
 
+  event.preventDefault();
   if (!isDriver()) return;
 
   const button = event.submitter;
   setLoading(button, true, "Save Fuel");
 
   try {
+
     const litres = Number($("fuelLitres")?.value);
     const amount = Number($("fuelAmount")?.value);
     const km = Number($("fuelKm")?.value);
@@ -1025,30 +1235,50 @@ $("fuelForm")?.addEventListener("submit", async event => {
     }
 
     await addDoc(collection(db, "Fuel"), {
+
       driverUid: currentUser.uid,
-      driverName: valueOf(currentProfile, ["name", "employeeName"], ""),
+
+      driverName: valueOf(
+        currentProfile,
+        ["name", "employeeName", "Name"],
+        ""
+      ),
+
       vehicleNo: $("fuelVehicle")?.value || "",
       fuelDate: $("fuelDate")?.value || getToday(),
+
       litres,
       amount,
       km,
+
       remarks: $("fuelRemarks")?.value || "",
+
       createdAt: serverTimestamp()
+
     });
 
-    showMessage("fuelMessage", "Fuel entry saved successfully.", "success");
+    showMessage(
+      "fuelMessage",
+      "Fuel entry saved successfully.",
+      "success"
+    );
 
     event.target.reset();
 
-    if ($("fuelDate")) $("fuelDate").value = getToday();
+    if ($("fuelDate")) {
+      $("fuelDate").value = getToday();
+    }
 
   } catch (error) {
-    console.error(error);
+
+    console.error("DRIVER FUEL ERROR:", error);
+
     showMessage(
       "fuelMessage",
-      error.message || "Fuel entry failed. Check Firestore rules.",
+      error.message || "Fuel entry failed.",
       "error"
     );
+
   } finally {
     setLoading(button, false, "Save Fuel");
   }
@@ -1056,18 +1286,19 @@ $("fuelForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   19. ADMIN FUEL ENTRY
+   25. ADMIN FUEL ENTRY
 ========================================================= */
 
 $("fuelEntryForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
 
+  event.preventDefault();
   if (!isAdmin()) return;
 
   const button = event.submitter;
   setLoading(button, true, "Save Fuel");
 
   try {
+
     const litres = Number($("adminFuelLitres")?.value);
     const amount = Number($("adminFuelAmount")?.value);
 
@@ -1076,22 +1307,29 @@ $("fuelEntryForm")?.addEventListener("submit", async event => {
     }
 
     await addDoc(collection(db, "Fuel"), {
+
       vehicleNo: $("adminFuelVehicle")?.value || "",
       fuelDate: $("adminFuelDate")?.value || getToday(),
+
       litres,
       amount,
+
       enteredBy: currentUser.uid,
       createdAt: serverTimestamp()
+
     });
 
     alert("Fuel entry saved successfully.");
+
     event.target.reset();
 
     await loadAdminDashboard();
 
   } catch (error) {
-    console.error(error);
+
+    console.error("ADMIN FUEL ERROR:", error);
     alert(error.message || "Fuel entry failed.");
+
   } finally {
     setLoading(button, false, "Save Fuel");
   }
@@ -1099,15 +1337,21 @@ $("fuelEntryForm")?.addEventListener("submit", async event => {
 
 
 /* =========================================================
-   20. USER MANAGEMENT
+   26. USER MANAGEMENT
 ========================================================= */
 
 async function loadManagedUsers() {
+
   try {
+
     const users = await getCollectionData("User");
+
     renderManagedUsers(users);
+
   } catch (error) {
-    console.error(error);
+
+    console.error("USER LIST ERROR:", error);
+
     showMessage(
       "managedUserMessage",
       "Unable to load users. Check administrator permissions.",
@@ -1117,6 +1361,7 @@ async function loadManagedUsers() {
 }
 
 function renderManagedUsers(users) {
+
   const tbody = $("managedUsersBody");
   if (!tbody) return;
 
@@ -1134,28 +1379,32 @@ function renderManagedUsers(users) {
 $("refreshUsersBtn")?.addEventListener("click", loadManagedUsers);
 
 $("managedUserForm")?.addEventListener("submit", event => {
+
   event.preventDefault();
 
   showMessage(
     "managedUserMessage",
-    "Firebase Spark plan: create the login account first in Firebase Authentication. Then create the User profile document using that account's exact Authentication UID. This form does not create Auth accounts.",
+    "Firebase Spark plan: create the login account in Firebase Authentication first. Then create the User profile document using the exact Authentication UID. This form cannot create Auth accounts.",
     "error"
   );
 });
 
 
 /* =========================================================
-   21. REPORT FILTER
+   27. REPORT FILTER
 ========================================================= */
 
 $("applyReport")?.addEventListener("click", async () => {
+
   try {
+
     const from = $("reportFrom")?.value;
     const to = $("reportTo")?.value;
 
     const trips = await getCollectionData("Trips");
 
     const filtered = trips.filter(trip => {
+
       const date = trip.tripDate || "";
 
       if (from && date < from) return false;
@@ -1172,27 +1421,34 @@ $("applyReport")?.addEventListener("click", async () => {
     }
 
   } catch (error) {
-    console.error(error);
+
+    console.error("REPORT ERROR:", error);
     alert("Unable to generate report.");
+
   }
 });
 
 
 /* =========================================================
-   22. SEARCH TRIP REGISTER
+   28. TRIP SEARCH
 ========================================================= */
 
 $("tripSearch")?.addEventListener("input", event => {
+
   const search = event.target.value.toLowerCase();
 
   document.querySelectorAll("#tripRegisterBody tr").forEach(row => {
-    row.hidden = !row.textContent.toLowerCase().includes(search);
+
+    row.hidden = !row.textContent
+      .toLowerCase()
+      .includes(search);
+
   });
 });
 
 
 /* =========================================================
-   23. PRINT REPORT
+   29. PRINT REPORT
 ========================================================= */
 
 $("printReport")?.addEventListener("click", () => {
@@ -1201,12 +1457,23 @@ $("printReport")?.addEventListener("click", () => {
 
 
 /* =========================================================
-   24. INITIAL DATE VALUES
+   30. INITIAL DATE VALUES
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+
   if ($("tripDate")) $("tripDate").value = getToday();
   if ($("fuelDate")) $("fuelDate").value = getToday();
-  if ($("adminTripDate")) $("adminTripDate").value = getToday();
-  if ($("adminFuelDate")) $("adminFuelDate").value = getToday();
+
+  if ($("adminTripDate")) {
+    $("adminTripDate").value = getToday();
+  }
+
+  if ($("adminFuelDate")) {
+    $("adminFuelDate").value = getToday();
+  }
+
 });
+
+
+console.log("MAFARM Vehicle Trip Management JavaScript loaded.");
