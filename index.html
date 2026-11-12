@@ -1,712 +1,397 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MAFARM Vehicle Trip Management</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-<!-- LOGIN -->
-<div id="loginPage" class="login-shell">
-  <section class="login-brand">
-    <div class="brand-mark">✦ MAFARM</div>
-    <div>
-      <h1>Vehicle Trip<br>Management System</h1>
-      <p>Secure vehicle operations, trip records and fuel management.</p>
-    </div>
-    <small>Manappuram Agro Farms Limited</small>
-  </section>
-
-  <section class="login-panel">
-    <h2>Welcome back</h2>
-    <p>Sign in using your registered User ID or email.</p>
-    <form id="mainLoginForm">
-      <label for="mainIdentity">User ID / Email</label>
-      <input id="mainIdentity" required autocomplete="username" placeholder="Enter User ID or email">
-
-      <label for="mainPassword">Password</label>
-      <input id="mainPassword" type="password" required autocomplete="current-password" placeholder="Enter password">
-
-      <button type="submit" id="mainLoginBtn">Sign in</button>
-      <p id="mainLoginMessage" aria-live="polite"></p>
-    </form>
-  </section>
-</div>
-
-<!-- ADMIN WORKSPACE -->
-<div id="adminWorkspace" class="role-workspace" style="display:none">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAFARM Vehicle Trip Management</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="https://unpkg.com/lucide@latest"></script><link rel="stylesheet" href="style.css"></head><body><div id="loginPage" class="login-shell">
+<section class="login-brand"><div class="brand-mark">✦ MAFARM</div><div><h1>Vehicle Trip<br>Management System</h1><p>Secure vehicle operations, trip records and fuel management.</p></div><small>Manappuram Agro Farms Limited</small></section>
+<section class="login-panel"><h2>Welcome back</h2><p>Sign in using your registered User ID or email.</p><form id="mainLoginForm"><label>User ID / Email</label><input id="mainIdentity" required autocomplete="username" placeholder="Enter User ID or email"><label>Password</label><input id="mainPassword" type="password" required autocomplete="current-password" placeholder="Enter password"><button type="submit" id="mainLoginBtn">Sign in</button><p id="mainLoginMessage" aria-live="polite"></p></form></section></div><div id="adminWorkspace" class="role-workspace" style="display:none">
 <div class="layout">
-
 <aside class="sidebar" id="sidebar">
   <div class="brand"><span class="leaf">✦</span><span>MAFARM</span></div>
-
   <div class="nav-scroll">
     <div class="nav-caption">MAIN MENU</div>
-    <button class="nav-link active" data-page="dashboard">Dashboard</button>
-    <button class="nav-link" data-page="trip-entry">Admin Trip Entry</button>
-    <button class="nav-link" data-page="trip-register">Trip Register</button>
-
+    <button class="nav-link active" data-page="dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</button>
+    <button class="nav-link" data-page="trip-entry"><i data-lucide="route"></i>Admin Trip Entry</button>
+    <button class="nav-link" data-page="trip-register"><i data-lucide="clipboard-list"></i>Trip Register</button>
     <div class="nav-caption">MASTER MANAGEMENT</div>
-    <button class="nav-link" data-page="user-management">User Management</button>
-    <button class="nav-link" data-page="drivers">Driver Management</button>
-    <button class="nav-link" data-page="employees">Employee Management</button>
-    <button class="nav-link" data-page="vehicles">Vehicle Management</button>
-
+    <button class="nav-link" data-page="user-management"><i data-lucide="user-cog"></i>User Management</button>
+    <button class="nav-link" data-page="drivers"><i data-lucide="contact-round"></i>Driver Management</button>
+    <button class="nav-link" data-page="employees"><i data-lucide="users"></i>Employee Management</button>
+    <button class="nav-link" data-page="vehicles"><i data-lucide="car-front"></i>Vehicle Management</button>
     <div class="nav-caption">FUEL MANAGEMENT</div>
-    <button class="nav-link" data-page="fuel-entry">Fuel Entry</button>
-    <button class="nav-link" data-page="fuel-register">Fuel Register</button>
-
+    <button class="nav-link" data-page="fuel-entry"><i data-lucide="fuel"></i>Fuel Entry</button>
+    <button class="nav-link" data-page="fuel-register"><i data-lucide="receipt-text"></i>Fuel Register</button>
     <div class="nav-caption">REPORTS & DATA</div>
-    <button class="nav-link" data-page="reports">Reports</button>
-    <button class="nav-link" data-page="bulk-upload">Bulk Upload</button>
-    <button class="nav-link" data-page="settings">Settings</button>
+    <button class="nav-link" data-page="reports"><i data-lucide="chart-no-axes-combined"></i>Reports</button>
+    <button class="nav-link" data-page="bulk-upload"><i data-lucide="cloud-upload"></i>Bulk Upload</button>
+    <button class="nav-link" data-page="settings"><i data-lucide="settings"></i>Settings</button>
   </div>
-
-  <div class="side-foot">
-    MAFARM Operations
-    <small>Vehicle Management Portal</small>
-  </div>
+  <div class="side-foot">MAFARM Operations<br><small>Vehicle Management Portal</small></div>
 </aside>
 
 <main class="main">
-
 <header class="topbar">
-  <button class="mobile-menu" id="menuBtn">☰</button>
+  <button class="mobile-menu" id="menuBtn"><i data-lucide="menu"></i></button>
   <div class="top-title">Vehicle Trip Management System <span>/ Admin</span></div>
-
-  <div class="top-right">
-    <button type="button" id="adminLogoutBtn" class="admin-logout-btn">
-      ↪ Logout
-    </button>
-    <div class="avatar">A</div>
-    <div class="admin">
-      <strong>Admin</strong>
-      <small>Operation Head</small>
-    </div>
-  </div>
+  <div class="top-right"><button type="button" onclick="window.mafarmLogout?.()" style="padding:8px 12px;border:0;border-radius:8px;background:#eef5ef;color:#17623d;cursor:pointer">Logout</button><button class="bell"><i data-lucide="bell"></i><b></b></button><div class="avatar">A</div><div class="admin"><strong>Admin</strong><small>Operation Head</small></div><i data-lucide="chevron-down"></i></div>
 </header>
 
 <div class="content">
-
 <!-- DASHBOARD -->
 <section class="page active" id="page-dashboard">
-  <div class="page-head">
-    <div>
-      <div class="eyebrow">OVERVIEW</div>
-      <h1>Admin Dashboard</h1>
-      <p>Daily vehicle operations at a glance.</p>
-    </div>
-    <div class="today-chip" id="today"></div>
-  </div>
-
-  <div class="stats">
-    <div class="stat"><small>Today's Trips</small><strong id="kpiTrips">0</strong></div>
-    <div class="stat"><small>Total KM Today</small><strong>0</strong></div>
-    <div class="stat"><small>Fuel Consumed</small><strong>0 Ltr</strong></div>
-    <div class="stat"><small>Average Efficiency</small><strong>0 km/l</strong></div>
-    <div class="stat"><small>Active Vehicles</small><strong>0</strong></div>
-    <div class="stat"><small>Active Drivers</small><strong>0</strong></div>
-  </div>
-
-  <section class="card">
-    <h2>Quick Actions</h2>
-    <div class="quick-grid">
-      <button data-go="trip-entry">Admin Trip Entry</button>
-      <button data-go="fuel-entry">Fuel Entry</button>
-      <button data-go="user-management">Add User</button>
-      <button data-go="employees">Add Employee</button>
-      <button data-go="vehicles">Add Vehicle</button>
-      <button data-go="reports">Reports</button>
-    </div>
+ <div class="page-head"><div><div class="eyebrow">OVERVIEW</div><h1>Admin Dashboard</h1><p>Daily vehicle operations at a glance.</p></div><div class="today-chip"><i data-lucide="calendar-days"></i><span id="today"></span></div></div>
+ <div class="stats">
+  <div class="stat s-green"><span><i data-lucide="route"></i></span><div><small>Today's Trips</small><strong id="kpiTrips">36</strong></div></div>
+  <div class="stat s-blue"><span><i data-lucide="gauge"></i></span><div><small>Total KM Today</small><strong>4,820</strong></div></div>
+  <div class="stat s-amber"><span><i data-lucide="fuel"></i></span><div><small>Fuel Consumed</small><strong>562.50 <em>Ltr</em></strong></div></div>
+  <div class="stat s-purple"><span><i data-lucide="chart-no-axes-combined"></i></span><div><small>Average Efficiency</small><strong>8.57 <em>km/l</em></strong></div></div>
+  <div class="stat s-mint"><span><i data-lucide="car-front"></i></span><div><small>Active Vehicles</small><strong>15</strong></div></div>
+  <div class="stat s-rose"><span><i data-lucide="contact-round"></i></span><div><small>Active Drivers</small><strong>18</strong></div></div>
+ </div>
+ <div class="dash-grid">
+  <section class="card quick-card"><div class="card-title"><h2><i data-lucide="zap"></i> Quick Actions</h2><span>Shortcuts</span></div>
+   <div class="quick-grid">
+    <button data-go="trip-entry"><i data-lucide="route"></i><b>Admin Trip Entry</b><small>Record a completed trip</small></button>
+    <button data-go="fuel-entry"><i data-lucide="fuel"></i><b>Fuel Entry</b><small>Record refuelling</small></button>
+    <button data-go="drivers"><i data-lucide="user-plus"></i><b>Add Driver</b><small>Driver registration</small></button>
+    <button data-go="employees"><i data-lucide="users"></i><b>Add Employee</b><small>Employee registration</small></button>
+    <button data-go="vehicles"><i data-lucide="car-front"></i><b>Add Vehicle</b><small>Vehicle master</small></button>
+    <button data-go="bulk-upload"><i data-lucide="file-up"></i><b>Bulk Upload</b><small>Excel / CSV import</small></button>
+   </div>
   </section>
-
-  <section class="card">
-    <div class="card-title">
-      <h2>Latest Trips</h2>
-      <button data-go="trip-register">View All Trips</button>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Trip ID</th>
-            <th>Date</th>
-            <th>Vehicle</th>
-            <th>Driver</th>
-            <th>From</th>
-            <th>To</th>
-            <th>Opening KM</th>
-            <th>Closing KM</th>
-            <th>Distance</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="latestTrips">
-          <tr><td colspan="10">No live trip data loaded yet.</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <section class="card snapshot"><div class="card-title"><h2><i data-lucide="activity"></i> Operations Snapshot</h2><span class="live">● Live preview</span></div>
+   <div class="snapshot-row"><div class="snap-icon green"><i data-lucide="car-front"></i></div><div><b>Trips in Progress</b><small>Vehicles currently on trip</small></div><strong>04</strong></div>
+   <div class="snapshot-row"><div class="snap-icon amber"><i data-lucide="fuel"></i></div><div><b>Fuel Entries Today</b><small>Refuelling records submitted</small></div><strong>12</strong></div>
+   <div class="snapshot-row"><div class="snap-icon blue"><i data-lucide="users"></i></div><div><b>Registered Employees</b><small>Active employee master records</small></div><strong>126</strong></div>
+   <div class="snapshot-row"><div class="snap-icon purple"><i data-lucide="truck"></i></div><div><b>Vehicles Under Maintenance</b><small>Currently unavailable</small></div><strong>02</strong></div>
   </section>
+ </div>
+ <section class="card recent-card">
+  <div class="card-title"><div><h2><i data-lucide="history"></i> Latest Trips</h2><p>Most recent trip records across all vehicles.</p></div><button class="outline-btn" data-go="trip-register">View All Trips <i data-lucide="arrow-up-right"></i></button></div>
+  <div class="filters compact"><input id="dashSearch" placeholder="Search vehicle, driver or destination"><select id="dashStatus"><option value="">All statuses</option><option>Completed</option><option>In Progress</option></select></div>
+  <div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle No</th><th>Driver</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="latestTrips">
+   <tr><td>TRP-0142</td><td>10 Nov 2026</td><td>KL 07 AB 4581</td><td>Rajesh K</td><td>Head Office</td><td>Painoor Farm</td><td>56,320</td><td>56,415</td><td>95</td><td><span class="pill completed">Completed</span></td></tr>
+   <tr><td>TRP-0141</td><td>10 Nov 2026</td><td>KL 07 CD 7723</td><td>Suresh M</td><td>Cherpu</td><td>Valapad</td><td>42,850</td><td>42,910</td><td>60</td><td><span class="pill completed">Completed</span></td></tr>
+   <tr><td>TRP-0140</td><td>10 Nov 2026</td><td>KL 07 EF 3366</td><td>Biju P</td><td>Head Office</td><td>Restaurant</td><td>71,240</td><td>—</td><td>—</td><td><span class="pill progress">In Progress</span></td></tr>
+   <tr><td>TRP-0139</td><td>09 Nov 2026</td><td>KL 07 GH 8899</td><td>Manoj K</td><td>Farm</td><td>Dairy Plant</td><td>38,110</td><td>38,188</td><td>78</td><td><span class="pill completed">Completed</span></td></tr>
+  </tbody></table></div>
+ </section>
+ <div class="dash-bottom">
+  <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="car-front"></i> Vehicle Availability</h2><button class="link-btn" data-go="vehicles">Manage</button></div><div class="availability"><div><strong>15</strong><small>Active</small></div><div><strong>02</strong><small>Maintenance</small></div><div><strong>03</strong><small>Idle</small></div></div><div class="progress-track"><span></span></div><small class="hint">15 of 20 registered vehicles active</small></section>
+  <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="bar-chart-3"></i> Report Shortcuts</h2><button class="link-btn" data-go="reports">All Reports</button></div><div class="report-shortcuts"><button data-report="driver">Driver-wise trips <i data-lucide="chevron-right"></i></button><button data-report="vehicle">Vehicle-wise KM <i data-lucide="chevron-right"></i></button><button data-report="fuel">Fuel consumption <i data-lucide="chevron-right"></i></button><button data-report="efficiency">Driver efficiency <i data-lucide="chevron-right"></i></button></div></section>
+ </div>
 </section>
 
-<!-- ADMIN TRIP ENTRY -->
+<!-- ADMIN COMPLETED TRIP ENTRY -->
 <section class="page" id="page-trip-entry">
-  <div class="page-head">
-    <div>
-      <div class="eyebrow">TRIP MANAGEMENT</div>
-      <h1>Admin Trip Entry</h1>
-      <p>Record completed trips.</p>
-    </div>
+ <div class="page-head"><div><div class="eyebrow">TRIP MANAGEMENT</div><h1>Admin Trip Entry</h1><p>Admin records a completed trip with start and closing details.</p></div><span class="page-badge"><i data-lucide="check-circle"></i> Completed Trip Record</span></div>
+ <form id="adminTripForm" class="card form-card">
+  <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="car-front"></i></span><div><h2>Trip & Vehicle Details</h2><p>Choose the vehicle and driver for this trip.</p></div></div>
+   <div class="form-grid">
+    <div class="field"><label>Vehicle Number <b>*</b></label><select id="adminVehicle" required><option value="">Select vehicle</option><option data-km="56320">KL 07 AB 4581</option><option data-km="42850">KL 07 CD 7723</option><option data-km="71240">KL 07 EF 3366</option><option data-km="38110">KL 07 GH 8899</option></select></div>
+    <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option><option>Rajesh K (DRV001)</option><option>Suresh M (DRV002)</option><option>Biju P (DRV003)</option><option>Manoj K (DRV004)</option></select></div>
+    <div class="field"><label>Department <b>*</b></label><select id="adminDepartmentSelect" required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option><option>Anil Kumar (EMP012)</option><option>Vishnu K S (EMP014)</option><option>Arun P (EMP008)</option><option>Other / Manual Entry</option></select></div>
+    <div class="field"><label>Trip Date <b>*</b></label><input id="adminTripDate" type="date" required></div>
+    <div class="field"><label>Trip Purpose <b>*</b></label><input id="adminPurpose" placeholder="e.g. Material delivery" required></div>
+   </div>
   </div>
-
-  <form id="adminTripForm" class="card form-card">
-    <h2>Trip & Vehicle Details</h2>
-
-    <div class="form-grid">
-      <div class="field">
-        <label>Vehicle Number *</label>
-        <select id="adminVehicle" required>
-          <option value="">Select vehicle</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Driver *</label>
-        <select id="adminDriverSelect" required>
-          <option value="">Select driver</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Department *</label>
-        <select id="adminDepartmentSelect" required>
-          <option value="">Select department</option>
-          <option>Operations</option>
-          <option>Retail</option>
-          <option>Restaurant</option>
-          <option>Farm</option>
-          <option>VAP</option>
-          <option>Head Office</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Requested Employee *</label>
-        <select id="adminEmployeeSelect" required>
-          <option value="">Select employee</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Trip Date *</label>
-        <input id="adminTripDate" type="date" required>
-      </div>
-
-      <div class="field">
-        <label>Start Time *</label>
-        <input id="adminStartTime" type="time" required>
-      </div>
-
-      <div class="field">
-        <label>From Location *</label>
-        <input id="adminFrom" required placeholder="Starting location">
-      </div>
-
-      <div class="field">
-        <label>To Location *</label>
-        <input id="adminTo" required placeholder="Destination">
-      </div>
-
-      <div class="field">
-        <label>Opening KM</label>
-        <input id="adminOpeningKm" type="number" readonly>
-      </div>
-
-      <div class="field">
-        <label>Closing KM *</label>
-        <input id="adminClosingKm" type="number" min="0" required>
-      </div>
-
-      <div class="field">
-        <label>Total Distance (KM)</label>
-        <input id="adminDistance" readonly>
-      </div>
-
-      <div class="field">
-        <label>End Time *</label>
-        <input id="adminEndTime" type="time" required>
-      </div>
-
-      <div class="field full-width">
-        <label>Purpose</label>
-        <textarea id="adminPurpose" rows="3"></textarea>
-      </div>
-    </div>
-
-    <div class="form-actions">
-      <button type="reset" class="secondary">Clear</button>
-      <button type="submit" class="primary">Save Completed Trip</button>
-    </div>
-  </form>
+  <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="map-pinned"></i></span><div><h2>Route & Time Details</h2><p>Record the starting point, destinations and return point.</p></div></div>
+   <div class="form-grid">
+    <div class="field"><label>From Location <b>*</b></label><input id="adminFrom" placeholder="Starting location" required></div>
+    <div class="field"><label>To Location <b>*</b></label><input id="adminTo" placeholder="Final destination" required></div>
+    <div class="field"><label>Start Time <b>*</b></label><input id="adminStartTime" type="time" required></div>
+    <div class="field"><label>Closing Time <b>*</b></label><input id="adminEndTime" type="time" required></div>
+   </div>
+   <div class="destination-block"><div class="destination-head"><div><b>Additional Destinations</b><small>Add any intermediate stops visited during the trip.</small></div><button type="button" class="outline-btn" id="addAdminDestination"><i data-lucide="plus"></i> Add Destination</button></div><div id="adminDestinations"><div class="destination-line"><span>1</span><input placeholder="Additional destination (optional)"><button type="button" class="remove-dest">×</button></div></div></div>
+  </div>
+  <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="gauge"></i></span><div><h2>Kilometre Details</h2><p>Opening KM is automatically filled from the latest vehicle KM record.</p></div></div>
+   <div class="form-grid three">
+    <div class="field"><label>Opening KM <span class="auto-tag">AUTO</span></label><input id="adminOpeningKm" readonly placeholder="Select vehicle"></div>
+    <div class="field"><label>Closing KM <b>*</b></label><input id="adminClosingKm" type="number" min="0" placeholder="Enter closing KM" required></div>
+    <div class="field"><label>Total Distance (KM)</label><input id="adminDistance" readonly placeholder="Auto calculated"></div>
+   </div>
+   <div class="field top-gap"><label>Remarks</label><textarea id="adminTripRemarks" rows="3" placeholder="Enter trip completion remarks"></textarea></div>
+  </div>
+  <div class="form-footer"><span><i data-lucide="info"></i> Completed trips are saved to Firebase and update the vehicle current KM.</span><div><button type="reset" class="btn light">Clear Form</button><button type="submit" class="btn primary"><i data-lucide="save"></i> Save Completed Trip</button></div></div>
+ </form>
 </section>
 
 <!-- TRIP REGISTER -->
 <section class="page" id="page-trip-register">
-  <div class="page-head"><h1>Trip Register</h1></div>
-  <section class="card">
-    <input id="tripSearch" placeholder="Search trip records">
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Trip ID</th><th>Date</th><th>Vehicle</th>
-            <th>Driver</th><th>From</th><th>To</th>
-            <th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="tripRegisterBody">
-          <tr><td colspan="10">No records loaded.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">TRIP MANAGEMENT</div><h1>Trip Register</h1><p>Search, filter and review all trip entries.</p></div><button class="btn primary" data-go="trip-entry"><i data-lucide="plus"></i> Add Completed Trip</button></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input id="tripSearch" placeholder="Search trip ID, vehicle, driver or place"></div><input type="date"><input type="date"><select><option>All departments</option><option>Farm Operations</option><option>Retail</option></select><select><option>All status</option><option>Completed</option><option>In Progress</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>Department</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="tripRegisterBody"><tr><td>TRP-0142</td><td>10-Nov-2026</td><td>KL 07 AB 4581</td><td>Rajesh K</td><td>Farm</td><td>Head Office</td><td>Painoor Farm</td><td>56,320</td><td>56,415</td><td>95</td><td><span class="pill completed">Completed</span></td></tr><tr><td>TRP-0141</td><td>10-Nov-2026</td><td>KL 07 CD 7723</td><td>Suresh M</td><td>Retail</td><td>Cherpu</td><td>Valapad</td><td>42,850</td><td>42,910</td><td>60</td><td><span class="pill completed">Completed</span></td></tr></tbody></table></div><div class="table-foot">Showing sample records · Pagination will be connected to Firestore</div></div>
 </section>
 
+<!-- DRIVERS -->
 <!-- USER MANAGEMENT -->
 <section class="page" id="page-user-management">
-  <div class="page-head">
-    <div>
-      <div class="eyebrow">ACCESS CONTROL</div>
-      <h1>User Management</h1>
-      <p>Create Admin and Driver login accounts.</p>
-    </div>
-  </div>
-
-  <div class="split">
-    <form id="managedUserForm" class="card form-card">
-      <h2>Add New User</h2>
-
-      <div class="form-grid">
-        <div class="field">
-          <label>User ID *</label>
-          <input id="newUserId" required placeholder="e.g. DRV019">
-        </div>
-
-        <div class="field">
-          <label>Employee Name *</label>
-          <input id="newUserName" required>
-        </div>
-
-        <div class="field">
-          <label>Role *</label>
-          <select id="newUserRole" required>
-            <option value="">Select role</option>
-            <option value="driver">Driver</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Email *</label>
-          <input id="newUserEmail" type="email" required>
-        </div>
-
-        <div class="field">
-          <label>Password *</label>
-          <input id="newUserPassword" type="password" minlength="8" required>
-        </div>
-
-        <div class="field">
-          <label>Mobile</label>
-          <input id="newUserMobile" type="tel">
-        </div>
-
-        <div class="field">
-          <label>Department</label>
-          <select id="newUserDepartment">
-            <option value="">Select department</option>
-            <option>Operations</option>
-            <option>Retail</option>
-            <option>Restaurant</option>
-            <option>Farm</option>
-            <option>VAP</option>
-            <option>Head Office</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Driver ID</label>
-          <input id="newUserDriverId">
-        </div>
-
-        <div class="field">
-          <label>Assigned Vehicle</label>
-          <input id="newUserVehicle">
-        </div>
-      </div>
-
-      <button type="submit" class="primary" id="createManagedUserBtn">
-        Create User Account
-      </button>
-      <p id="managedUserMessage" aria-live="polite"></p>
-    </form>
-
-    <section class="card">
-      <div class="card-title">
-        <h2>Registered Users</h2>
-        <button id="refreshUsersBtn" type="button">Refresh</button>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr>
-          </thead>
-          <tbody id="managedUsersBody">
-            <tr><td colspan="5">User records require Firebase integration.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
+ <div class="page-head"><div><div class="eyebrow">ACCESS CONTROL</div><h1>User Management</h1><p>Create Admin and Driver login accounts and manage access details.</p></div><span class="page-badge">User Master</span></div>
+ <div class="split">
+  <form id="managedUserForm" class="card form-card">
+   <div class="card-title"><h2><i data-lucide="user-plus"></i> Add New User</h2></div>
+   <div class="form-grid">
+    <div class="field"><label>User ID <b>*</b></label><input id="newUserId" required placeholder="e.g. DRV019"></div>
+    <div class="field"><label>Employee Name <b>*</b></label><input id="newUserName" required placeholder="Full name"></div>
+    <div class="field"><label>Role <b>*</b></label><select id="newUserRole" required><option value="">Select role</option><option value="driver">Driver</option><option value="admin">Admin</option></select></div>
+    <div class="field"><label>Email <b>*</b></label><input id="newUserEmail" type="email" required placeholder="name@mafarm.in"></div>
+    <div class="field"><label>Temporary Password <b>*</b></label><input id="newUserPassword" type="password" minlength="8" required placeholder="Minimum 8 characters"></div>
+    <div class="field"><label>Mobile Number</label><input id="newUserMobile" type="tel" placeholder="Mobile number"></div>
+    <div class="field"><label>Department</label><select id="newUserDepartment"><option value="">Select department</option><option>Operations</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Driver ID (if Driver)</label><input id="newUserDriverId" placeholder="DRV019"></div>
+    <div class="field"><label>Assigned Vehicle (optional)</label><input id="newUserVehicle" placeholder="KL 07 AB 1234"></div>
+   </div>
+   <div class="form-footer"><small>On Firebase Spark, create the Auth account in Firebase Console first. Then create its User profile using the exact Authentication UID. Never store passwords in Firestore.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Create User Account</button></div></div>
+   <p id="managedUserMessage" class="form-message" aria-live="polite"></p>
+  </form>
+  <section class="card">
+   <div class="card-title"><div><h2><i data-lucide="users"></i> Registered Users</h2><p>Accounts currently saved in Firestore.</p></div><button class="outline-btn" type="button" id="refreshUsersBtn">Refresh</button></div>
+   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="5">Loading user records…</td></tr></tbody></table></div>
+  </section>
+ </div>
 </section>
-
-<!-- DRIVER MANAGEMENT -->
 <section class="page" id="page-drivers">
-  <div class="page-head"><h1>Driver Management</h1></div>
-  <section class="card">
-    <p>Driver login accounts are managed through User Management.</p>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Driver Management</h1><p>Create and maintain driver profiles and login access.</p></div><span class="page-badge">Driver Master</span></div>
+ <div class="split">
+  <form id="driverForm" class="card form-card"><div class="card-title"><h2><i data-lucide="user-round-plus"></i> Driver Registration</h2></div><div class="form-grid">
+   <div class="field"><label>Driver ID <b>*</b></label><input placeholder="DRV019" required></div><div class="field"><label>Driver Name <b>*</b></label><input placeholder="Full name" required></div>
+   <div class="field"><label>Mobile Number <b>*</b></label><input type="tel" placeholder="Mobile number" required></div><div class="field"><label>Email</label><input type="email" placeholder="Email address"></div>
+   <div class="field"><label>Department</label><select><option>Select department</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div><div class="field"><label>License Number</label><input placeholder="Driving licence number"></div>
+   <div class="field"><label>License Valid Until</label><input type="date"></div><div class="field"><label>Login User ID <b>*</b></label><input placeholder="Driver login ID" required></div>
+   <div class="field"><label>Login Password / Invite</label><input placeholder="Set temporary password"></div><div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
+  </div><div class="form-footer"><span>Role will be assigned as Driver.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Driver</button></div></form>
+  <section class="card"><div class="card-title"><h2><i data-lucide="contact-round"></i> Driver List</h2></div><div class="register-tools"><input placeholder="Search driver / ID"><select><option>All status</option><option>Active</option><option>Inactive</option></select></div><div class="table-scroll"><table><thead><tr><th>Driver ID</th><th>Name</th><th>Mobile</th><th>Status</th></tr></thead><tbody id="driverTableBody"><tr><td>DRV001</td><td>Rajesh K</td><td>98XXXXXX01</td><td><span class="pill completed">Active</span></td></tr><tr><td>DRV002</td><td>Suresh M</td><td>98XXXXXX02</td><td><span class="pill completed">Active</span></td></tr></tbody></table></div></section>
+ </div>
 </section>
 
-<!-- EMPLOYEE MANAGEMENT -->
+<!-- EMPLOYEES -->
 <section class="page" id="page-employees">
-  <div class="page-head"><h1>Employee Management</h1></div>
-  <section class="card">
-    <form id="employeeForm" class="form-grid">
-      <div class="field"><label>Employee ID</label><input id="employeeId" required></div>
-      <div class="field"><label>Employee Name</label><input id="employeeName" required></div>
-      <div class="field"><label>Department</label><input id="employeeDepartment"></div>
-      <button class="primary" type="submit">Save Employee</button>
-    </form>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Employee Management</h1><p>Maintain employee records for trip requests and department mapping.</p></div><span class="page-badge">Employee Master</span></div>
+ <div class="split">
+  <form id="employeeForm" class="card form-card"><div class="card-title"><h2><i data-lucide="user-plus"></i> Employee Registration</h2></div><div class="form-grid">
+   <div class="field"><label>Employee ID <b>*</b></label><input placeholder="EMP019" required></div><div class="field"><label>Employee Name <b>*</b></label><input placeholder="Full name" required></div>
+   <div class="field"><label>Department <b>*</b></label><select required><option value="">Select department</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div><div class="field"><label>Designation</label><input placeholder="Designation"></div>
+   <div class="field"><label>Mobile Number</label><input type="tel" placeholder="Mobile number"></div><div class="field"><label>Email</label><input type="email" placeholder="Email address"></div>
+   <div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
+  </div><div class="form-footer"><span>Employee can be selected as requested person in a trip.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Employee</button></div></form>
+  <section class="card"><div class="card-title"><h2><i data-lucide="users"></i> Employee List</h2></div><div class="register-tools"><input placeholder="Search employee / ID"><select><option>All departments</option><option>Farm</option><option>Retail</option></select></div><div class="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Status</th></tr></thead><tbody id="employeeTableBody"><tr><td>EMP012</td><td>Anil Kumar</td><td>Farm</td><td><span class="pill completed">Active</span></td></tr><tr><td>EMP014</td><td>Vishnu K S</td><td>Operations</td><td><span class="pill completed">Active</span></td></tr></tbody></table></div></section>
+ </div>
 </section>
 
-<!-- VEHICLE MANAGEMENT -->
+<!-- VEHICLES -->
 <section class="page" id="page-vehicles">
-  <div class="page-head"><h1>Vehicle Management</h1></div>
-  <section class="card">
-    <form id="vehicleMasterForm" class="form-grid">
-      <div class="field"><label>Vehicle Number</label><input id="vehicleNumber" required></div>
-      <div class="field"><label>Vehicle Type</label><input id="vehicleType"></div>
-      <div class="field"><label>Initial KM</label><input id="vehicleInitialKm" type="number"></div>
-      <button class="primary" type="submit">Save Vehicle</button>
-    </form>
+ <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Vehicle Management</h1><p>Register 50+ vehicles, import Excel/CSV records and maintain current kilometre readings.</p></div><span class="page-badge">Vehicle Master</span></div>
+ <div class="vehicle-kpis">
+  <div class="vehicle-kpi"><small>Total Vehicles</small><strong id="vehicleTotal">0</strong></div>
+  <div class="vehicle-kpi"><small>Active Vehicles</small><strong id="vehicleActive">0</strong></div>
+  <div class="vehicle-kpi"><small>Inactive Vehicles</small><strong id="vehicleInactive">0</strong></div>
+ </div>
+ <div class="vehicle-master-grid">
+  <form id="vehicleMasterForm" class="card form-card">
+   <div class="card-title"><h2><i data-lucide="car-front"></i> Vehicle Registration</h2></div>
+   <div class="form-grid">
+    <div class="field"><label>Vehicle Number <b>*</b></label><input id="vehicleNumber" placeholder="KL 07 AB 4581" required maxlength="24"></div>
+    <div class="field"><label>Vehicle Type <b>*</b></label><select id="vehicleType" required><option value="">Select type</option><option>Car</option><option>SUV</option><option>Pickup</option><option>Van</option><option>Truck</option><option>Lorry</option><option>Bus</option><option>Two Wheeler</option><option>Other</option></select></div>
+    <div class="field"><label>Initial KM <b>*</b></label><input id="vehicleInitialKm" type="number" min="0" step="0.1" placeholder="Initial odometer reading" required></div>
+    <div class="field"><label>Fuel Type</label><select id="vehicleFuelType"><option value="">Select fuel type</option><option>Diesel</option><option>Petrol</option><option>Electric</option><option>CNG</option><option>Hybrid</option></select></div>
+    <div class="field"><label>Registration Date</label><input id="vehicleRegistrationDate" type="date"></div>
+    <div class="field"><label>Assigned Department</label><select id="vehicleDepartment"><option>Common Pool</option><option>Operations</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Assigned Driver</label><select id="vehicleAssignedDriver"><option value="">No Driver Assigned</option></select></div>
+    <div class="field"><label>Vehicle Status</label><select id="vehicleStatus"><option>Active</option><option>Maintenance</option><option>Inactive</option></select></div>
+    <div class="field full-width"><label>Remarks</label><textarea id="vehicleRemarks" rows="2" placeholder="Optional remarks"></textarea></div>
+   </div>
+   <div class="form-footer"><span>Current KM starts from Initial KM and updates after completed trips for assigned drivers.</span><button class="btn primary" id="saveVehicleBtn" type="submit"><i data-lucide="save"></i> Save Vehicle</button></div>
+   <p id="vehicleMessage" class="form-message" aria-live="polite"></p>
+  </form>
+  <section class="card vehicle-bulk-card">
+   <div class="card-title"><h2><i data-lucide="file-spreadsheet"></i> Excel / CSV Bulk Upload</h2></div>
+   <p class="bulk-help">Register multiple vehicles at once. Supports XLSX, XLS and CSV files. No fixed 50-vehicle limit.</p>
+   <a href="#" id="downloadVehicleTemplate" class="template-link">Download Vehicle Excel Template</a>
+   <div class="field"><label>Select Excel / CSV File</label><input type="file" id="vehicleBulkFile" accept=".xlsx,.xls,.csv"></div>
+   <div class="bulk-actions"><button type="button" class="btn light" id="previewVehicleUpload">Preview & Validate</button><button type="button" class="btn primary" id="importVehiclesBtn" disabled>Import Valid Vehicles</button></div>
+   <p id="vehicleBulkMessage" class="form-message" aria-live="polite"></p>
+   <div id="vehicleUploadPreview" class="vehicle-preview"></div>
   </section>
+ </div>
+ <section class="card vehicle-register-card">
+  <div class="card-title"><div><h2><i data-lucide="list"></i> Vehicle Register</h2><p>Live records from the Firestore Vehicles collection.</p></div><button type="button" class="outline-btn" id="refreshVehiclesBtn">Refresh</button></div>
+  <div class="register-tools"><input id="vehicleSearch" placeholder="Search vehicle number, type, driver or department"><select id="vehicleStatusFilter"><option value="">All status</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+  <div class="table-scroll"><table><thead><tr><th>Vehicle No</th><th>Type</th><th>Initial KM</th><th>Current KM</th><th>Assigned Driver</th><th>Department</th><th>Status</th></tr></thead><tbody id="vehicleTableBody"><tr><td colspan="7">Loading vehicles…</td></tr></tbody></table></div>
+ </section>
 </section>
 
 <!-- FUEL ENTRY -->
 <section class="page" id="page-fuel-entry">
-  <div class="page-head"><h1>Fuel Entry</h1></div>
-  <section class="card">
-    <form id="fuelEntryForm" class="form-grid">
-      <div class="field"><label>Vehicle</label><input id="adminFuelVehicle"></div>
-      <div class="field"><label>Date</label><input id="adminFuelDate" type="date"></div>
-      <div class="field"><label>Quantity (Litres)</label><input id="adminFuelLitres" type="number"></div>
-      <div class="field"><label>Amount</label><input id="adminFuelAmount" type="number"></div>
-      <button class="primary" type="submit">Save Fuel</button>
-    </form>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">FUEL MANAGEMENT</div><h1>Fuel Entry</h1><p>Record fuel filling against a vehicle and odometer reading.</p></div><span class="page-badge">Fuel Transaction</span></div>
+ <div class="split">
+  <form id="fuelEntryForm" class="card form-card"><div class="card-title"><h2><i data-lucide="fuel"></i> New Fuel Entry</h2></div><div class="form-grid">
+   <div class="field"><label>Vehicle Number <b>*</b></label><select id="fuelVehicleAdmin" required><option value="">Select vehicle</option><option>KL 07 AB 4581</option><option>KL 07 CD 7723</option><option>KL 07 EF 3366</option></select></div><div class="field"><label>Driver <b>*</b></label><select id="fuelDriverAdmin" required><option value="">Select driver</option><option>Rajesh K (DRV001)</option><option>Suresh M (DRV002)</option><option>Biju P (DRV003)</option></select></div>
+   <div class="field"><label>Fuel Date <b>*</b></label><input id="adminFuelDate" type="date" required></div><div class="field"><label>Fuel Time</label><input id="adminFuelTime" type="time"></div>
+   <div class="field"><label>KM Reading <b>*</b></label><input id="adminFuelKm" type="number" min="0" placeholder="Odometer reading" required></div><div class="field"><label>Fuel Quantity (Litres) <b>*</b></label><input id="adminFuelLitres" type="number" min="0.01" step="0.01" placeholder="e.g. 35.50" required></div>
+   <div class="field"><label>Amount (₹) <b>*</b></label><input id="adminFuelAmount" type="number" min="0" step="0.01" placeholder="Total amount" required></div><div class="field"><label>Fuel Rate (₹ / Ltr)</label><input id="adminFuelRate" type="number" step="0.01" placeholder="Auto calculate from amount"></div>
+   <div class="field"><label>Fuel Station</label><input id="adminFuelStation" placeholder="Pump / station name"></div><div class="field"><label>Bill / Invoice Number</label><input id="adminFuelBill" placeholder="Bill reference"></div>
+   <div class="field full"><label>Remarks</label><textarea id="adminFuelRemarks" rows="3" placeholder="Additional details"></textarea></div>
+  </div><div class="form-footer"><span>Attach bill image can be enabled with Firebase Storage.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Fuel Entry</button></div></form>
+  <section class="card"><div class="card-title"><h2><i data-lucide="history"></i> Recent Fuel Entries</h2></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>KM</th><th>Litres</th><th>Amount</th></tr></thead><tbody id="fuelRecentBody"><tr><td>10-Nov-2026</td><td>KL 07 AB 4581</td><td>56,415</td><td>45.50</td><td>₹4,730</td></tr><tr><td>09-Nov-2026</td><td>KL 07 CD 7723</td><td>42,850</td><td>32.00</td><td>₹3,328</td></tr></tbody></table></div></section>
+ </div>
 </section>
 
 <!-- FUEL REGISTER -->
 <section class="page" id="page-fuel-register">
-  <div class="page-head"><h1>Fuel Register</h1></div>
-  <section class="card">
-    <p>Fuel records will appear here after database integration.</p>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">FUEL MANAGEMENT</div><h1>Fuel Register</h1><p>Search and review fuel transactions.</p></div><button class="btn primary" data-go="fuel-entry"><i data-lucide="plus"></i> Add Fuel Entry</button></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input placeholder="Search vehicle, driver or bill"></div><input type="date"><input type="date"><select><option>All vehicles</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Driver</th><th>KM</th><th>Fuel Ltr</th><th>Amount</th><th>Station</th><th>Bill No</th></tr></thead><tbody id="fuelRegisterBody"><tr><td>10-Nov-2026</td><td>KL 07 AB 4581</td><td>Rajesh K</td><td>56,415</td><td>45.50</td><td>₹4,730</td><td>ABC Fuels</td><td>F-1022</td></tr></tbody></table></div></div>
 </section>
 
 <!-- REPORTS -->
 <section class="page" id="page-reports">
-  <div class="page-head"><h1>Reports</h1></div>
-  <section class="card">
-    <div class="quick-grid">
-      <button data-report="driver">Driver-wise Report</button>
-      <button data-report="vehicle">Vehicle-wise Report</button>
-      <button data-report="fuel">Fuel Report</button>
-      <button data-report="efficiency">Driver Efficiency</button>
-    </div>
-    <h2 id="reportTitle">Select a report</h2>
-    <div class="form-grid">
-      <div class="field"><label>From Date</label><input id="reportFrom" type="date"></div>
-      <div class="field"><label>To Date</label><input id="reportTo" type="date"></div>
-    </div>
-    <button id="applyReport" class="primary">Apply Filters</button>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">ANALYTICS</div><h1>Reports & Analysis</h1><p>Select a report, apply filters and export results.</p></div></div>
+ <div class="report-grid">
+  <button class="report-card" data-report="driver"><span class="report-icon green"><i data-lucide="user-round"></i></span><b>Driver-wise Report</b><small>Trips, total KM, destinations and driver activity.</small><i data-lucide="arrow-up-right"></i></button>
+  <button class="report-card" data-report="vehicle"><span class="report-icon blue"><i data-lucide="car-front"></i></span><b>Vehicle-wise Report</b><small>Vehicle utilisation, trip history and kilometres.</small><i data-lucide="arrow-up-right"></i></button>
+  <button class="report-card" data-report="fuel"><span class="report-icon amber"><i data-lucide="fuel"></i></span><b>Fuel Report</b><small>Fuel quantity, amount, rate and consumption.</small><i data-lucide="arrow-up-right"></i></button>
+  <button class="report-card" data-report="efficiency"><span class="report-icon purple"><i data-lucide="gauge"></i></span><b>Driver-wise Efficiency</b><small>Distance travelled divided by fuel consumed.</small><i data-lucide="arrow-up-right"></i></button>
+ </div>
+ <section class="card report-result"><div class="card-title"><h2 id="reportTitle">Report Preview</h2><button class="btn light">Export Excel</button></div><div class="report-filters"><div class="field"><label>From Date</label><input type="date"></div><div class="field"><label>To Date</label><input type="date"></div><div class="field"><label>Department</label><select><option>All Departments</option><option>Farm</option><option>Retail</option><option>Restaurant</option></select></div><div class="field"><label>Driver / Vehicle</label><select><option>All</option><option>Rajesh K</option><option>KL 07 AB 4581</option></select></div><button class="btn primary" id="applyReport">Apply Filters</button></div><div class="empty-report"><i data-lucide="chart-no-axes-combined"></i><b>Select a report above</b><small>Report calculations and charts will be connected to Firestore records.</small></div></section>
 </section>
 
 <!-- BULK UPLOAD -->
 <section class="page" id="page-bulk-upload">
-  <div class="page-head"><h1>Bulk Upload</h1></div>
-  <section class="card">
-    <p>Bulk upload preview. Import functionality requires database integration.</p>
-    <label>Driver CSV</label><input type="file" data-file="driverFileName" accept=".csv,.xlsx">
-    <p id="driverFileName"></p>
-    <label>Vehicle CSV</label><input type="file" data-file="vehicleFileName" accept=".csv,.xlsx">
-    <p id="vehicleFileName"></p>
-    <label>Employee CSV</label><input type="file" data-file="employeeFileName" accept=".csv,.xlsx">
-    <p id="employeeFileName"></p>
-  </section>
+ <div class="page-head"><div><div class="eyebrow">DATA MANAGEMENT</div><h1>Bulk Upload</h1><p>Import master records using Excel or CSV templates.</p></div><span class="page-badge"><i data-lucide="file-spreadsheet"></i> Bulk Import</span></div>
+ <div class="upload-grid">
+  <div class="card upload-card"><span class="upload-icon green"><i data-lucide="contact-round"></i></span><h2>Upload Drivers</h2><p>Driver ID, name, mobile, email, department and status.</p><label class="file-btn">Choose Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" data-file="driverFile"></label><small id="driverFile">No file selected</small><button class="template-btn" data-template="drivers">Download template</button></div>
+  <div class="card upload-card"><span class="upload-icon blue"><i data-lucide="car-front"></i></span><h2>Upload Vehicles</h2><p>Vehicle number, type, initial KM, fuel type and status.</p><label class="file-btn">Choose Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" data-file="vehicleFile"></label><small id="vehicleFile">No file selected</small><button class="template-btn" data-template="vehicles">Download template</button></div>
+  <div class="card upload-card"><span class="upload-icon purple"><i data-lucide="users"></i></span><h2>Upload Employees</h2><p>Employee ID, name, department, designation and status.</p><label class="file-btn">Choose Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" data-file="employeeFile"></label><small id="employeeFile">No file selected</small><button class="template-btn" data-template="employees">Download template</button></div>
+ </div>
+ <section class="card import-steps"><div class="card-title"><h2><i data-lucide="list-checks"></i> Bulk Upload Process</h2></div><div class="steps"><div><b>01</b><strong>Download template</strong><small>Use the correct column format.</small></div><div><b>02</b><strong>Fill records</strong><small>Complete mandatory fields and unique IDs.</small></div><div><b>03</b><strong>Validate file</strong><small>Check duplicates and missing values.</small></div><div><b>04</b><strong>Import records</strong><small>Confirm before writing to Firestore.</small></div></div><p class="warning"><i data-lucide="shield-alert"></i> This frontend preview only selects files. Actual validation and import will be added during Firebase integration.</p></section>
 </section>
 
-<!-- SETTINGS -->
-<section class="page" id="page-settings">
-  <div class="page-head"><h1>Settings</h1></div>
-  <section class="card">
-    <div class="field">
-      <label>Company Name</label>
-      <input value="Manappuram Agro Farms Limited">
-    </div>
-  </section>
-</section>
-
+<section class="page" id="page-settings"><div class="page-head"><div><div class="eyebrow">CONFIGURATION</div><h1>Settings</h1><p>Manage departments, roles and application preferences.</p></div></div><div class="card form-card"><div class="card-title"><h2><i data-lucide="settings"></i> System Settings</h2></div><div class="form-grid"><div class="field"><label>Company Name</label><input value="Manappuram Agro Farms Limited"></div><div class="field"><label>Default KM Unit</label><select><option>Kilometres (KM)</option></select></div><div class="field"><label>Trip ID Prefix</label><input value="TRP"></div><div class="field"><label>Default Time Format</label><select><option>12 Hour</option><option>24 Hour</option></select></div></div><p class="hint">User roles and department permissions must be enforced in Firebase Security Rules, not only in this interface.</p></div></section>
+<footer>© MAFARM · Vehicle Trip Management System <span>Admin Interface Preview</span></footer>
 </div>
 </main>
 </div>
 <div class="toast" id="toast"></div>
-</div>
 
-<!-- DRIVER WORKSPACE -->
-<div id="driverWorkspace" class="role-workspace" style="display:none">
-<main id="appPage" class="app driver-app hidden">
+</div><div id="driverWorkspace" class="role-workspace" style="display:none"><main id="appPage" class="app hidden">
+    <header class="topbar">
+      <div class="brand-inline">🌿 <strong>MAFARM</strong><span>Vehicle Trip Management</span></div>
+      <div class="user-area"><span id="loggedUser">Driver</span><button id="logoutBtn" class="logout">Logout ↗</button></div>
+    </header>
+    <div class="app-body">
+      <aside class="sidebar">
+        <button class="nav active" data-view="tripView">🚗 <span>Trip Entry</span></button>
+        <button class="nav" data-view="fuelView">⛽ <span>Fuel Entry</span></button>
+        <div class="side-note">Driver workspace</div>
+      </aside>
 
-<header class="topbar">
-  <div class="brand-inline">🌿 <strong>MAFARM</strong><span>Vehicle Trip Management</span></div>
-  <div class="user-area">
-    <span id="loggedUser">Driver</span>
-    <button id="logoutBtn" class="logout">Logout</button>
-  </div>
-</header>
-
-<div class="app-body">
-  <aside class="sidebar">
-    <button class="nav active" data-view="tripView">🚗 Trip Entry</button>
-    <button class="nav" data-view="fuelView">⛽ Fuel Entry</button>
-    <div class="side-note">Driver workspace</div>
-  </aside>
-
-  <section class="content">
-    <div class="welcome-row">
-      <div>
-        <p class="eyebrow">DRIVER WORKSPACE</p>
-        <h1 id="welcomeTitle">Trip Entry</h1>
-        <p class="muted">Enter trip details before starting your journey.</p>
-      </div>
-      <div class="status-pill">Ready to start</div>
-    </div>
-
-    <!-- DRIVER TRIP ENTRY -->
-    <section id="tripView" class="view">
-      <form id="tripForm" class="panel">
-        <div class="panel-heading">
-          <div>
-            <h2>Start a new trip</h2>
-            <p class="muted">Driver information is taken from your login.</p>
-          </div>
-          <span class="step-tag">TRIP DETAILS</span>
+      <section class="content">
+        <div class="welcome-row">
+          <div><p class="eyebrow">DRIVER WORKSPACE</p><h1 id="welcomeTitle">Trip Entry</h1><p class="muted">Enter trip details before starting your journey.</p></div>
+          <div class="status-pill"><i></i> Ready to start</div>
         </div>
 
-        <div class="form-grid">
-          <div class="field">
-            <label>Driver</label>
-            <input id="driverName" readonly>
-          </div>
+        <section id="tripView" class="view">
+          <form id="tripForm" class="panel">
+            <div class="panel-heading"><div><h2>Start a new trip</h2><p class="muted">Driver information is taken from your login.</p></div><span class="step-tag">TRIP DETAILS</span></div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Driver</label>
+                <input id="driverName" value="Demo Driver" readonly />
+                <small>Automatically populated from registered user profile</small>
+              </div>
+              <div class="field">
+                <label for="vehicle">Select Vehicle <b>*</b></label>
+                <select id="vehicle" required>
+                  <option value="">Select vehicle</option>
+                  <option value="KL 07 AB 4581" data-km="56320">KL 07 AB 4581</option>
+                  <option value="KL 08 CD 2190" data-km="42850">KL 08 CD 2190</option>
+                  <option value="KL 45 M 7712" data-km="71240">KL 45 M 7712</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="openingKm">Opening KM</label>
+                <input id="openingKm" type="number" placeholder="Auto-filled after vehicle selection" readonly />
+                <small>Fetched from the vehicle's latest closing KM (demo values)</small>
+              </div>
+              <div class="field">
+                <label for="department">Department <b>*</b></label>
+                <select id="department" required>
+                  <option value="">Select department</option>
+                  <option>Retail</option><option>Restaurant</option><option>Farm</option>
+                  <option>VAP</option><option>Head Office</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="requestedEmployee">Requested Employee <b>*</b></label>
+                <select id="requestedEmployee" required>
+                  <option value="">Select employee</option>
+                  <option>Anil Kumar - RET001</option>
+                  <option>Vishnu K S - OPS014</option>
+                  <option>Arun P - FARM008</option>
+                  <option value="manual">Enter manually</option>
+                </select>
+              </div>
+              <div class="field hidden" id="manualEmployeeWrap">
+                <label for="manualEmployee">Employee name</label>
+                <input id="manualEmployee" placeholder="Enter requested employee name" />
+              </div>
+              <div class="field">
+                <label for="tripDate">Trip Date</label>
+                <input id="tripDate" type="date" required />
+              </div>
+              <div class="field">
+                <label for="startTime">Start Time</label>
+                <input id="startTime" type="time" required />
+              </div>
+              <div class="field full-width">
+                <label for="purpose">Trip Purpose <b>*</b></label>
+                <input id="purpose" placeholder="e.g. Material delivery / Official visit" required />
+              </div>
+            </div>
 
-          <div class="field">
-            <label for="vehicle">Select Vehicle *</label>
-            <select id="vehicle" required>
-              <option value="">Select vehicle</option>
-            </select>
-          </div>
+            <div class="destination-head">
+              <div><h3>Trip Destinations <b>*</b></h3><p class="muted">Add one or more destinations in travel order.</p></div>
+              <button type="button" id="addDestination" class="secondary">＋ Add destination</button>
+            </div>
+            <div id="destinationList" class="destination-list">
+              <div class="destination-row"><span class="destination-number">1</span><input aria-label="Destination 1" placeholder="Enter first destination" required /><button type="button" class="remove-destination" title="Remove destination">×</button></div>
+            </div>
+            <div class="form-actions">
+              <button type="reset" class="secondary">Clear form</button>
+              <button type="submit" class="primary">▶ Start Trip</button>
+            </div>
+          </form>
 
-          <div class="field">
-            <label for="openingKm">Opening KM</label>
-            <input id="openingKm" type="number" readonly>
-          </div>
+          <section id="activeTrip" class="panel hidden">
+            <div class="active-heading"><div><span class="live-dot"></span><strong>Trip in progress</strong></div><span id="tripNumber" class="step-tag">TRIP ACTIVE</span></div>
+            <div id="activeSummary" class="summary-grid"></div>
+            <div class="destination-head">
+              <div><h3>Additional Destinations</h3><p class="muted">Add any places visited after starting the trip, before closing it.</p></div>
+              <button type="button" id="addClosingDestination" class="secondary">＋ Add destination</button>
+            </div>
+            <div id="closingDestinationList" class="destination-list"></div>
+            <h3>End Trip</h3>
+            <form id="endTripForm" class="form-grid">
+              <div class="field"><label for="closingKm">Closing KM <b>*</b></label><input id="closingKm" type="number" min="0" required placeholder="Enter closing kilometre" /></div>
+              <div class="field"><label for="endTime">End Time <b>*</b></label><input id="endTime" type="time" required /></div>
+              <div class="field full-width"><label for="remarks">Remarks</label><textarea id="remarks" rows="3" placeholder="Enter trip completion remarks"></textarea></div>
+              <div class="form-actions full-width"><button type="submit" class="primary">✓ End Trip</button></div>
+            </form>
+          </section>
+        </section>
 
-          <div class="field">
-            <label for="department">Department *</label>
-            <select id="department" required>
-              <option value="">Select department</option>
-              <option>Operations</option>
-              <option>Retail</option>
-              <option>Restaurant</option>
-              <option>Farm</option>
-              <option>VAP</option>
-              <option>Head Office</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="requestedEmployee">Requested Employee *</label>
-            <select id="requestedEmployee" required>
-              <option value="">Select employee</option>
-              <option value="manual">Enter manually</option>
-            </select>
-          </div>
-
-          <div class="field hidden" id="manualEmployeeWrap">
-            <label for="manualEmployee">Employee Name</label>
-            <input id="manualEmployee">
-          </div>
-
-          <div class="field">
-            <label for="tripDate">Trip Date *</label>
-            <input id="tripDate" type="date" required>
-          </div>
-
-          <div class="field">
-            <label for="startTime">Start Time *</label>
-            <input id="startTime" type="time" required>
-          </div>
-
-          <div class="field full-width">
-            <label for="purpose">Trip Purpose *</label>
-            <input id="purpose" required placeholder="Material delivery / Official visit">
-          </div>
-        </div>
-
-        <div class="destination-head">
-          <div>
-            <h3>Trip Destinations *</h3>
-            <p class="muted">Add one or more destinations in travel order.</p>
-          </div>
-          <button type="button" id="addDestination" class="secondary">＋ Add destination</button>
-        </div>
-
-        <div id="destinationList" class="destination-list">
-          <div class="destination-row">
-            <span class="destination-number">1</span>
-            <input placeholder="Enter first destination" required>
-            <button type="button" class="remove-destination">×</button>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="reset" class="secondary">Clear form</button>
-          <button type="submit" class="primary">Start Trip</button>
-        </div>
-      </form>
-
-      <!-- ACTIVE TRIP / END TRIP -->
-      <section id="activeTrip" class="panel hidden">
-        <div class="active-heading">
-          <strong>Trip in progress</strong>
-          <span id="tripNumber" class="step-tag">TRIP ACTIVE</span>
-        </div>
-
-        <div id="activeSummary" class="summary-grid"></div>
-
-        <div class="destination-head">
-          <div>
-            <h3>Additional Destinations</h3>
-            <p class="muted">Add places visited before closing the trip.</p>
-          </div>
-          <button type="button" id="addClosingDestination" class="secondary">＋ Add destination</button>
-        </div>
-
-        <div id="closingDestinationList" class="destination-list"></div>
-
-        <h3>End Trip</h3>
-        <form id="endTripForm" class="form-grid">
-          <div class="field">
-            <label for="closingKm">Closing KM *</label>
-            <input id="closingKm" type="number" min="0" required>
-          </div>
-          <div class="field">
-            <label for="endTime">End Time *</label>
-            <input id="endTime" type="time" required>
-          </div>
-          <div class="field full-width">
-            <label for="remarks">Remarks</label>
-            <textarea id="remarks" rows="3"></textarea>
-          </div>
-          <div class="form-actions full-width">
-            <button type="submit" class="primary">End Trip</button>
-          </div>
-        </form>
+        <section id="fuelView" class="view hidden">
+          <form id="fuelForm" class="panel">
+            <div class="panel-heading"><div><h2>Fuel Entry</h2><p class="muted">Record vehicle refuelling details.</p></div><span class="step-tag">FUEL LOG</span></div>
+            <div class="form-grid">
+              <div class="field"><label>Driver</label><input id="fuelDriver" readonly /></div>
+              <div class="field"><label for="fuelVehicle">Vehicle <b>*</b></label><select id="fuelVehicle" required><option value="">Select vehicle</option><option>KL 07 AB 4581</option><option>KL 08 CD 2190</option><option>KL 45 M 7712</option></select></div>
+              <div class="field"><label for="fuelDate">Date <b>*</b></label><input id="fuelDate" type="date" required /></div>
+              <div class="field"><label for="fuelLitres">Fuel Quantity (Litres) <b>*</b></label><input id="fuelLitres" type="number" min="0.1" step="0.1" required placeholder="e.g. 35" /></div>
+              <div class="field"><label for="fuelAmount">Amount (₹) <b>*</b></label><input id="fuelAmount" type="number" min="0" step="0.01" required placeholder="Enter amount" /></div>
+              <div class="field"><label for="fuelKm">Vehicle KM <b>*</b></label><input id="fuelKm" type="number" min="0" required placeholder="Enter current KM" /></div>
+              <div class="field full-width"><label for="fuelRemarks">Remarks / Bill reference</label><input id="fuelRemarks" placeholder="Pump name, bill number or remarks" /></div>
+            </div>
+            <div class="form-actions"><button type="reset" class="secondary">Clear</button><button class="primary" type="submit">Save Fuel Entry</button></div>
+            <p id="fuelMessage" class="message" aria-live="polite"></p>
+          </form>
+        </section>
       </section>
-    </section>
-
-    <!-- DRIVER FUEL ENTRY -->
-    <section id="fuelView" class="view hidden">
-      <form id="fuelForm" class="panel">
-        <div class="panel-heading">
-          <div>
-            <h2>Fuel Entry</h2>
-            <p class="muted">Record vehicle refuelling details.</p>
-          </div>
-          <span class="step-tag">FUEL LOG</span>
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Driver</label>
-            <input id="fuelDriver" readonly>
-          </div>
-
-          <div class="field">
-            <label for="fuelVehicle">Vehicle *</label>
-            <select id="fuelVehicle" required>
-              <option value="">Select vehicle</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="fuelDate">Date *</label>
-            <input id="fuelDate" type="date" required>
-          </div>
-
-          <div class="field">
-            <label for="fuelLitres">Fuel Quantity (Litres) *</label>
-            <input id="fuelLitres" type="number" min="0.1" step="0.1" required>
-          </div>
-
-          <div class="field">
-            <label for="fuelAmount">Amount (₹) *</label>
-            <input id="fuelAmount" type="number" min="0" step="0.01" required>
-          </div>
-
-          <div class="field">
-            <label for="fuelKm">Vehicle KM *</label>
-            <input id="fuelKm" type="number" min="0" required>
-          </div>
-
-          <div class="field full-width">
-            <label for="fuelRemarks">Remarks / Bill Reference</label>
-            <input id="fuelRemarks">
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="reset" class="secondary">Clear</button>
-          <button type="submit" class="primary">Save Fuel Entry</button>
-        </div>
-        <p id="fuelMessage" aria-live="polite"></p>
-      </form>
-    </section>
-
-  </section>
-</div>
-</main>
-</div>
-
-<script type="module" src="app.js"></script>
-</body>
-</html>
+    </div>
+  </main></div><script type="module" src="app.js?v=vehicle-master-1"></script></body></html>
