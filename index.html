@@ -38,11 +38,11 @@
  <div class="page-head"><div><div class="eyebrow">OVERVIEW</div><h1>Admin Dashboard</h1><p>Daily vehicle operations at a glance.</p></div><div class="today-chip"><i data-lucide="calendar-days"></i><span id="today"></span></div></div>
  <div class="stats">
   <div class="stat s-green"><span><i data-lucide="route"></i></span><div><small>Today's Trips</small><strong id="kpiTrips">36</strong></div></div>
-  <div class="stat s-blue"><span><i data-lucide="gauge"></i></span><div><small>Total KM Today</small><strong>4,820</strong></div></div>
-  <div class="stat s-amber"><span><i data-lucide="fuel"></i></span><div><small>Fuel Consumed</small><strong>562.50 <em>Ltr</em></strong></div></div>
-  <div class="stat s-purple"><span><i data-lucide="chart-no-axes-combined"></i></span><div><small>Average Efficiency</small><strong>8.57 <em>km/l</em></strong></div></div>
-  <div class="stat s-mint"><span><i data-lucide="car-front"></i></span><div><small>Active Vehicles</small><strong>15</strong></div></div>
-  <div class="stat s-rose"><span><i data-lucide="contact-round"></i></span><div><small>Active Drivers</small><strong>18</strong></div></div>
+  <div class="stat s-blue"><span><i data-lucide="gauge"></i></span><div><small>Total KM Today</small><strong id="kpiKmToday">0</strong></div></div>
+  <div class="stat s-amber"><span><i data-lucide="fuel"></i></span><div><small>Fuel Consumed</small><strong><span id="kpiFuelToday">0</span> <em>Ltr</em></strong></div></div>
+  <div class="stat s-purple"><span><i data-lucide="chart-no-axes-combined"></i></span><div><small>Average Efficiency</small><strong><span id="kpiEfficiency">0</span> <em>km/l</em></strong></div></div>
+  <div class="stat s-mint"><span><i data-lucide="car-front"></i></span><div><small>Active Vehicles</small><strong id="kpiActiveVehicles">0</strong></div></div>
+  <div class="stat s-rose"><span><i data-lucide="contact-round"></i></span><div><small>Active Drivers</small><strong id="kpiActiveDrivers">0</strong></div></div>
  </div>
  <div class="dash-grid">
   <section class="card quick-card"><div class="card-title"><h2><i data-lucide="zap"></i> Quick Actions</h2><span>Shortcuts</span></div>
@@ -65,15 +65,10 @@
  <section class="card recent-card">
   <div class="card-title"><div><h2><i data-lucide="history"></i> Latest Trips</h2><p>Most recent trip records across all vehicles.</p></div><button class="outline-btn" data-go="trip-register">View All Trips <i data-lucide="arrow-up-right"></i></button></div>
   <div class="filters compact"><input id="dashSearch" placeholder="Search vehicle, driver or destination"><select id="dashStatus"><option value="">All statuses</option><option>Completed</option><option>In Progress</option></select></div>
-  <div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle No</th><th>Driver</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="latestTrips">
-   <tr><td>TRP-0142</td><td>10 Nov 2026</td><td>KL 07 AB 4581</td><td>Rajesh K</td><td>Head Office</td><td>Painoor Farm</td><td>56,320</td><td>56,415</td><td>95</td><td><span class="pill completed">Completed</span></td></tr>
-   <tr><td>TRP-0141</td><td>10 Nov 2026</td><td>KL 07 CD 7723</td><td>Suresh M</td><td>Cherpu</td><td>Valapad</td><td>42,850</td><td>42,910</td><td>60</td><td><span class="pill completed">Completed</span></td></tr>
-   <tr><td>TRP-0140</td><td>10 Nov 2026</td><td>KL 07 EF 3366</td><td>Biju P</td><td>Head Office</td><td>Restaurant</td><td>71,240</td><td>—</td><td>—</td><td><span class="pill progress">In Progress</span></td></tr>
-   <tr><td>TRP-0139</td><td>09 Nov 2026</td><td>KL 07 GH 8899</td><td>Manoj K</td><td>Farm</td><td>Dairy Plant</td><td>38,110</td><td>38,188</td><td>78</td><td><span class="pill completed">Completed</span></td></tr>
-  </tbody></table></div>
+  <div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle No</th><th>Driver</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="latestTrips"><tr><td colspan="10">No trip records found.</td></tr></tbody></table></div>
  </section>
  <div class="dash-bottom">
-  <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="car-front"></i> Vehicle Availability</h2><button class="link-btn" data-go="vehicles">Manage</button></div><div class="availability"><div><strong>15</strong><small>Active</small></div><div><strong>02</strong><small>Maintenance</small></div><div><strong>03</strong><small>Idle</small></div></div><div class="progress-track"><span></span></div><small class="hint">15 of 20 registered vehicles active</small></section>
+  <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="car-front"></i> Vehicle Availability</h2><button class="link-btn" data-go="vehicles">Manage</button></div><div class="availability"><div><strong id="availabilityActive">0</strong><small>Active</small></div><div><strong id="availabilityMaintenance">0</strong><small>Maintenance</small></div><div><strong id="availabilityIdle">0</strong><small>Idle</small></div></div><div class="progress-track"><span></span></div><small class="hint">Vehicle availability from registered records</small></section>
   <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="bar-chart-3"></i> Report Shortcuts</h2><button class="link-btn" data-go="reports">All Reports</button></div><div class="report-shortcuts"><button data-report="driver">Driver-wise trips <i data-lucide="chevron-right"></i></button><button data-report="vehicle">Vehicle-wise KM <i data-lucide="chevron-right"></i></button><button data-report="fuel">Fuel consumption <i data-lucide="chevron-right"></i></button><button data-report="efficiency">Driver efficiency <i data-lucide="chevron-right"></i></button></div></section>
  </div>
 </section>
@@ -84,10 +79,10 @@
  <form id="adminTripForm" class="card form-card">
   <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="car-front"></i></span><div><h2>Trip & Vehicle Details</h2><p>Choose the vehicle and driver for this trip.</p></div></div>
    <div class="form-grid">
-    <div class="field"><label>Vehicle Number <b>*</b></label><select id="adminVehicle" required><option value="">Select vehicle</option><option data-km="56320">KL 07 AB 4581</option><option data-km="42850">KL 07 CD 7723</option><option data-km="71240">KL 07 EF 3366</option><option data-km="38110">KL 07 GH 8899</option></select></div>
-    <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option><option>Rajesh K (DRV001)</option><option>Suresh M (DRV002)</option><option>Biju P (DRV003)</option><option>Manoj K (DRV004)</option></select></div>
+    <div class="field"><label>Vehicle Number <b>*</b></label><select id="adminVehicle" required><option value="">Select vehicle</option></select></div>
+    <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option></select></div>
     <div class="field"><label>Department <b>*</b></label><select id="adminDepartmentSelect" required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
-    <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option><option>Anil Kumar (EMP012)</option><option>Vishnu K S (EMP014)</option><option>Arun P (EMP008)</option><option>Other / Manual Entry</option></select></div>
+    <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option></select></div>
     <div class="field"><label>Trip Date <b>*</b></label><input id="adminTripDate" type="date" required></div>
     <div class="field"><label>Trip Purpose <b>*</b></label><input id="adminPurpose" placeholder="e.g. Material delivery" required></div>
    </div>
@@ -116,7 +111,7 @@
 <!-- TRIP REGISTER -->
 <section class="page" id="page-trip-register">
  <div class="page-head"><div><div class="eyebrow">TRIP MANAGEMENT</div><h1>Trip Register</h1><p>Search, filter and review all trip entries.</p></div><button class="btn primary" data-go="trip-entry"><i data-lucide="plus"></i> Add Completed Trip</button></div>
- <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input id="tripSearch" placeholder="Search trip ID, vehicle, driver or place"></div><input type="date"><input type="date"><select><option>All departments</option><option>Farm Operations</option><option>Retail</option></select><select><option>All status</option><option>Completed</option><option>In Progress</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>Department</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="tripRegisterBody"><tr><td>TRP-0142</td><td>10-Nov-2026</td><td>KL 07 AB 4581</td><td>Rajesh K</td><td>Farm</td><td>Head Office</td><td>Painoor Farm</td><td>56,320</td><td>56,415</td><td>95</td><td><span class="pill completed">Completed</span></td></tr><tr><td>TRP-0141</td><td>10-Nov-2026</td><td>KL 07 CD 7723</td><td>Suresh M</td><td>Retail</td><td>Cherpu</td><td>Valapad</td><td>42,850</td><td>42,910</td><td>60</td><td><span class="pill completed">Completed</span></td></tr></tbody></table></div><div class="table-foot">Showing sample records · Pagination will be connected to Firestore</div></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input id="tripSearch" placeholder="Search trip ID, vehicle, driver or place"></div><input type="date"><input type="date"><select><option>All departments</option><option>Farm Operations</option><option>Retail</option></select><select><option>All status</option><option>Completed</option><option>In Progress</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>Department</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="tripRegisterBody"><tr><td colspan="12">No trip records found.</td></tr></tbody></table></div><div class="table-foot">Showing sample records · Pagination will be connected to Firestore</div></div>
 </section>
 
 <!-- DRIVERS -->
@@ -142,7 +137,7 @@
   </form>
   <section class="card">
    <div class="card-title"><div><h2><i data-lucide="users"></i> Registered Users</h2><p>Accounts currently saved in Firestore.</p></div><button class="outline-btn" type="button" id="refreshUsersBtn">Refresh</button></div>
-   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="5">Loading user records…</td></tr></tbody></table></div>
+   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="6">Loading user records…</td></tr></tbody></table></div>
   </section>
  </div>
 </section>
@@ -156,7 +151,7 @@
    <div class="field"><label>License Valid Until</label><input type="date"></div><div class="field"><label>Login User ID <b>*</b></label><input placeholder="Driver login ID" required></div>
    <div class="field"><label>Login Password / Invite</label><input placeholder="Set temporary password"></div><div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
   </div><div class="form-footer"><span>Role will be assigned as Driver.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Driver</button></div></form>
-  <section class="card"><div class="card-title"><h2><i data-lucide="contact-round"></i> Driver List</h2></div><div class="register-tools"><input placeholder="Search driver / ID"><select><option>All status</option><option>Active</option><option>Inactive</option></select></div><div class="table-scroll"><table><thead><tr><th>Driver ID</th><th>Name</th><th>Mobile</th><th>Status</th></tr></thead><tbody id="driverTableBody"><tr><td>DRV001</td><td>Rajesh K</td><td>98XXXXXX01</td><td><span class="pill completed">Active</span></td></tr><tr><td>DRV002</td><td>Suresh M</td><td>98XXXXXX02</td><td><span class="pill completed">Active</span></td></tr></tbody></table></div></section>
+  <section class="card"><div class="card-title"><h2><i data-lucide="contact-round"></i> Driver List</h2></div><div class="register-tools"><input placeholder="Search driver / ID"><select><option>All status</option><option>Active</option><option>Inactive</option></select></div><div class="table-scroll"><table><thead><tr><th>Driver ID</th><th>Name</th><th>Mobile</th><th>Status</th></tr></thead><tbody id="driverTableBody"><tr><td colspan="5">No driver profiles found.</td></tr></tbody></table></div></section>
  </div>
 </section>
 
@@ -170,7 +165,7 @@
    <div class="field"><label>Mobile Number</label><input type="tel" placeholder="Mobile number"></div><div class="field"><label>Email</label><input type="email" placeholder="Email address"></div>
    <div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
   </div><div class="form-footer"><span>Employee can be selected as requested person in a trip.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Employee</button></div></form>
-  <section class="card"><div class="card-title"><h2><i data-lucide="users"></i> Employee List</h2></div><div class="register-tools"><input placeholder="Search employee / ID"><select><option>All departments</option><option>Farm</option><option>Retail</option></select></div><div class="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Status</th></tr></thead><tbody id="employeeTableBody"><tr><td>EMP012</td><td>Anil Kumar</td><td>Farm</td><td><span class="pill completed">Active</span></td></tr><tr><td>EMP014</td><td>Vishnu K S</td><td>Operations</td><td><span class="pill completed">Active</span></td></tr></tbody></table></div></section>
+  <section class="card"><div class="card-title"><h2><i data-lucide="users"></i> Employee List</h2></div><div class="register-tools"><input placeholder="Search employee / ID"><select><option>All departments</option><option>Farm</option><option>Retail</option></select></div><div class="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Status</th></tr></thead><tbody id="employeeTableBody"><tr><td colspan="4">No employee records found.</td></tr></tbody></table></div></section>
  </div>
 </section>
 
@@ -212,7 +207,7 @@
  <section class="card vehicle-register-card">
   <div class="card-title"><div><h2><i data-lucide="list"></i> Vehicle Register</h2><p>Live records from the Firestore Vehicles collection.</p></div><button type="button" class="outline-btn" id="refreshVehiclesBtn">Refresh</button></div>
   <div class="register-tools"><input id="vehicleSearch" placeholder="Search vehicle number, type, driver or department"><select id="vehicleStatusFilter"><option value="">All status</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
-  <div class="table-scroll"><table><thead><tr><th>Vehicle No</th><th>Type</th><th>Initial KM</th><th>Current KM</th><th>Assigned Driver</th><th>Department</th><th>Status</th></tr></thead><tbody id="vehicleTableBody"><tr><td colspan="7">Loading vehicles…</td></tr></tbody></table></div>
+  <div class="table-scroll"><table><thead><tr><th>Vehicle No</th><th>Type</th><th>Initial KM</th><th>Current KM</th><th>Assigned Driver</th><th>Department</th><th>Status</th></tr></thead><tbody id="vehicleTableBody"><tr><td colspan="8">Loading vehicles…</td></tr></tbody></table></div>
  </section>
 </section>
 
@@ -221,21 +216,21 @@
  <div class="page-head"><div><div class="eyebrow">FUEL MANAGEMENT</div><h1>Fuel Entry</h1><p>Record fuel filling against a vehicle and odometer reading.</p></div><span class="page-badge">Fuel Transaction</span></div>
  <div class="split">
   <form id="fuelEntryForm" class="card form-card"><div class="card-title"><h2><i data-lucide="fuel"></i> New Fuel Entry</h2></div><div class="form-grid">
-   <div class="field"><label>Vehicle Number <b>*</b></label><select id="fuelVehicleAdmin" required><option value="">Select vehicle</option><option>KL 07 AB 4581</option><option>KL 07 CD 7723</option><option>KL 07 EF 3366</option></select></div><div class="field"><label>Driver <b>*</b></label><select id="fuelDriverAdmin" required><option value="">Select driver</option><option>Rajesh K (DRV001)</option><option>Suresh M (DRV002)</option><option>Biju P (DRV003)</option></select></div>
+   <div class="field"><label>Vehicle Number <b>*</b></label><select id="fuelVehicleAdmin" required><option value="">Select vehicle</option></select></div><div class="field"><label>Driver <b>*</b></label><select id="fuelDriverAdmin" required><option value="">Select driver</option></select></div>
    <div class="field"><label>Fuel Date <b>*</b></label><input id="adminFuelDate" type="date" required></div><div class="field"><label>Fuel Time</label><input id="adminFuelTime" type="time"></div>
    <div class="field"><label>KM Reading <b>*</b></label><input id="adminFuelKm" type="number" min="0" placeholder="Odometer reading" required></div><div class="field"><label>Fuel Quantity (Litres) <b>*</b></label><input id="adminFuelLitres" type="number" min="0.01" step="0.01" placeholder="e.g. 35.50" required></div>
    <div class="field"><label>Amount (₹) <b>*</b></label><input id="adminFuelAmount" type="number" min="0" step="0.01" placeholder="Total amount" required></div><div class="field"><label>Fuel Rate (₹ / Ltr)</label><input id="adminFuelRate" type="number" step="0.01" placeholder="Auto calculate from amount"></div>
    <div class="field"><label>Fuel Station</label><input id="adminFuelStation" placeholder="Pump / station name"></div><div class="field"><label>Bill / Invoice Number</label><input id="adminFuelBill" placeholder="Bill reference"></div>
    <div class="field full"><label>Remarks</label><textarea id="adminFuelRemarks" rows="3" placeholder="Additional details"></textarea></div>
   </div><div class="form-footer"><span>Attach bill image can be enabled with Firebase Storage.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Fuel Entry</button></div></form>
-  <section class="card"><div class="card-title"><h2><i data-lucide="history"></i> Recent Fuel Entries</h2></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>KM</th><th>Litres</th><th>Amount</th></tr></thead><tbody id="fuelRecentBody"><tr><td>10-Nov-2026</td><td>KL 07 AB 4581</td><td>56,415</td><td>45.50</td><td>₹4,730</td></tr><tr><td>09-Nov-2026</td><td>KL 07 CD 7723</td><td>42,850</td><td>32.00</td><td>₹3,328</td></tr></tbody></table></div></section>
+  <section class="card"><div class="card-title"><h2><i data-lucide="history"></i> Recent Fuel Entries</h2></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>KM</th><th>Litres</th><th>Amount</th></tr></thead><tbody id="fuelRecentBody"><tr><td colspan="5">No fuel entries found.</td></tr></tbody></table></div></section>
  </div>
 </section>
 
 <!-- FUEL REGISTER -->
 <section class="page" id="page-fuel-register">
  <div class="page-head"><div><div class="eyebrow">FUEL MANAGEMENT</div><h1>Fuel Register</h1><p>Search and review fuel transactions.</p></div><button class="btn primary" data-go="fuel-entry"><i data-lucide="plus"></i> Add Fuel Entry</button></div>
- <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input placeholder="Search vehicle, driver or bill"></div><input type="date"><input type="date"><select><option>All vehicles</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Driver</th><th>KM</th><th>Fuel Ltr</th><th>Amount</th><th>Station</th><th>Bill No</th></tr></thead><tbody id="fuelRegisterBody"><tr><td>10-Nov-2026</td><td>KL 07 AB 4581</td><td>Rajesh K</td><td>56,415</td><td>45.50</td><td>₹4,730</td><td>ABC Fuels</td><td>F-1022</td></tr></tbody></table></div></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input placeholder="Search vehicle, driver or bill"></div><input type="date"><input type="date"><select><option>All vehicles</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Driver</th><th>KM</th><th>Fuel Ltr</th><th>Amount</th><th>Station</th><th>Bill No</th></tr></thead><tbody id="fuelRegisterBody"><tr><td colspan="8">No fuel records found.</td></tr></tbody></table></div></div>
 </section>
 
 <!-- REPORTS -->
@@ -247,7 +242,7 @@
   <button class="report-card" data-report="fuel"><span class="report-icon amber"><i data-lucide="fuel"></i></span><b>Fuel Report</b><small>Fuel quantity, amount, rate and consumption.</small><i data-lucide="arrow-up-right"></i></button>
   <button class="report-card" data-report="efficiency"><span class="report-icon purple"><i data-lucide="gauge"></i></span><b>Driver-wise Efficiency</b><small>Distance travelled divided by fuel consumed.</small><i data-lucide="arrow-up-right"></i></button>
  </div>
- <section class="card report-result"><div class="card-title"><h2 id="reportTitle">Report Preview</h2><button class="btn light">Export Excel</button></div><div class="report-filters"><div class="field"><label>From Date</label><input type="date"></div><div class="field"><label>To Date</label><input type="date"></div><div class="field"><label>Department</label><select><option>All Departments</option><option>Farm</option><option>Retail</option><option>Restaurant</option></select></div><div class="field"><label>Driver / Vehicle</label><select><option>All</option><option>Rajesh K</option><option>KL 07 AB 4581</option></select></div><button class="btn primary" id="applyReport">Apply Filters</button></div><div class="empty-report"><i data-lucide="chart-no-axes-combined"></i><b>Select a report above</b><small>Report calculations and charts will be connected to Firestore records.</small></div></section>
+ <section class="card report-result"><div class="card-title"><h2 id="reportTitle">Report Preview</h2><button class="btn light">Export Excel</button></div><div class="report-filters"><div class="field"><label>From Date</label><input type="date"></div><div class="field"><label>To Date</label><input type="date"></div><div class="field"><label>Department</label><select><option>All Departments</option><option>Farm</option><option>Retail</option><option>Restaurant</option></select></div><div class="field"><label>Driver / Vehicle</label><select><option>All</option></select></div><button class="btn primary" id="applyReport">Apply Filters</button></div><div class="empty-report"><i data-lucide="chart-no-axes-combined"></i><b>Select a report above</b><small>Report calculations and charts will be connected to Firestore records.</small></div></section>
 </section>
 
 <!-- BULK UPLOAD -->
@@ -381,7 +376,7 @@
             <div class="panel-heading"><div><h2>Fuel Entry</h2><p class="muted">Record vehicle refuelling details.</p></div><span class="step-tag">FUEL LOG</span></div>
             <div class="form-grid">
               <div class="field"><label>Driver</label><input id="fuelDriver" readonly /></div>
-              <div class="field"><label for="fuelVehicle">Vehicle <b>*</b></label><select id="fuelVehicle" required><option value="">Select vehicle</option><option>KL 07 AB 4581</option><option>KL 08 CD 2190</option><option>KL 45 M 7712</option></select></div>
+              <div class="field"><label for="fuelVehicle">Vehicle <b>*</b></label><select id="fuelVehicle" required><option value="">Select vehicle</option></select></div>
               <div class="field"><label for="fuelDate">Date <b>*</b></label><input id="fuelDate" type="date" required /></div>
               <div class="field"><label for="fuelLitres">Fuel Quantity (Litres) <b>*</b></label><input id="fuelLitres" type="number" min="0.1" step="0.1" required placeholder="e.g. 35" /></div>
               <div class="field"><label for="fuelAmount">Amount (₹) <b>*</b></label><input id="fuelAmount" type="number" min="0" step="0.01" required placeholder="Enter amount" /></div>
