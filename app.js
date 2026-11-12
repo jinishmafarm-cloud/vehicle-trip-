@@ -82,7 +82,11 @@ function setBusy(button, busy, label) {
 function normaliseVehicle(value) { return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
 function vehicleNumber(v) { return val(v, ["vehicleNo", "vehicleNumber", "VehicleNo", "registrationNumber"], v.id || ""); }
 function vehicleCurrentKm(v) { return Number(val(v, ["currentKm", "lastClosingKm", "initialKm", "InitialKM"], 0)); }
-function activeRecord(record) { return val(record, ["active", "Active"], true) !== false; }
+function activeRecord(record) {
+  const status = String(val(record, ["status", "Status"], "")).toLowerCase();
+  if (status.includes("maintenance") || status === "inactive") return false;
+  return val(record, ["active", "Active"], true) !== false;
+}
 function formatDate(value) {
   if (!value) return "";
   if (value?.toDate) value = value.toDate();
@@ -480,22 +484,32 @@ async function importVehicleFile() {
     button.disabled = true; button.textContent = "Import Vehicles";
   }
 }
+function vehicleStatusLabel(v) {
+  const raw = String(val(v, ["status", "Status"], "")).trim();
+  if (/maintenance|repair|service/i.test(raw)) return "Under Maintenance";
+  if (/inactive/i.test(raw)) return "Inactive";
+  return activeRecord(v) ? "Active" : "Inactive";
+}
 function renderVehicleRegister() {
   const tbody = $("vehicleTableBody"); if (!tbody) return;
-  const active = vehicleData.filter(activeRecord).length;
-  const inactive = vehicleData.length - active;
+  const active = vehicleData.filter(v => vehicleStatusLabel(v) === "Active").length;
+  const maintenance = vehicleData.filter(v => vehicleStatusLabel(v) === "Under Maintenance").length;
+  const inactive = vehicleData.filter(v => vehicleStatusLabel(v) === "Inactive").length;
   if ($("vehicleTotal")) $("vehicleTotal").textContent = vehicleData.length;
   if ($("vehicleActive")) $("vehicleActive").textContent = active;
-  if ($("vehicleInactive")) $("vehicleInactive").textContent = inactive;
-  tbody.innerHTML = vehicleData.length ? [...vehicleData].sort((a,b)=>vehicleNumber(a).localeCompare(vehicleNumber(b))).map(v => `
-    <tr data-status="${activeRecord(v)?"Active":"Inactive"}">
+  if ($("vehicleInactive")) $("vehicleInactive").textContent = inactive + maintenance;
+  tbody.innerHTML = vehicleData.length ? [...vehicleData].sort((a,b)=>vehicleNumber(a).localeCompare(vehicleNumber(b))).map(v => {
+    const status = vehicleStatusLabel(v);
+    return `<tr data-status="${esc(status)}">
       <td><b>${esc(vehicleNumber(v))}</b></td><td>${esc(val(v,["vehicleType","type"],"—"))}</td>
       <td>${Number(val(v,["initialKm","InitialKM"],0)).toLocaleString("en-IN")}</td>
       <td><b>${vehicleCurrentKm(v).toLocaleString("en-IN")}</b></td>
       <td>${esc(val(v,["assignedDriverName"],"Unassigned") || "Unassigned")}</td>
       <td>${esc(val(v,["department","Department"],"Common Pool"))}</td>
-      <td><span class="pill ${activeRecord(v)?"completed":"progress"}">${activeRecord(v)?"Active":"Inactive"}</span></td>
-    </tr>`).join("") : `<tr><td colspan="7" class="empty-cell">No vehicles registered yet. Add a vehicle or import an Excel file.</td></tr>`;
+      <td><span class="pill ${status==="Active"?"completed":"progress"}">${esc(status)}</span></td>
+      <td><div class="vehicle-actions"><button type="button" class="vehicle-edit-btn" data-vehicle-edit="${esc(v.id)}">Edit</button><button type="button" class="vehicle-delete-btn" data-vehicle-delete="${esc(v.id)}">Delete</button></div></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="8" class="empty-cell">No vehicles registered yet. Add a vehicle or import an Excel file.</td></tr>`;
   filterVehicleRows();
 }
 function filterVehicleRows() {
@@ -932,4 +946,72 @@ document.addEventListener("click", event => {
   if (event.target.closest("#exportTripRegisterBtn")) {
     exportTripRegisterExcel();
   }
+});
+
+
+/* ---------------- VEHICLE EDIT / STATUS / DELETE ---------------- */
+async function editVehicleRecord(vehicleId) {
+  if (!isAdmin()) return toast("Only Admin can edit vehicles.", true);
+  const v = vehicleData.find(item => item.id === vehicleId);
+  if (!v) return toast("Vehicle record not found. Refresh and try again.", true);
+
+  const oldInitial = Number(val(v, ["initialKm", "InitialKM"], 0));
+  const initialInput = window.prompt(`Update initial KM for ${vehicleNumber(v)}:`, String(oldInitial));
+  if (initialInput === null) return;
+  const initialKm = Number(initialInput);
+  if (!Number.isFinite(initialKm) || initialKm < 0) return toast("Enter a valid non-negative initial KM.", true);
+
+  const currentStatus = vehicleStatusLabel(v);
+  const statusInput = window.prompt(
+    `Enter vehicle status exactly as one of: Active, Under Maintenance, Inactive`,
+    currentStatus
+  );
+  if (statusInput === null) return;
+  const statusMap = {
+    "active": "Active",
+    "under maintenance": "Under Maintenance",
+    "maintenance": "Under Maintenance",
+    "inactive": "Inactive"
+  };
+  const status = statusMap[statusInput.trim().toLowerCase()];
+  if (!status) return toast("Invalid status. Use Active, Under Maintenance or Inactive.", true);
+
+  try {
+    await updateDoc(doc(db, COLLECTION.vehicles, vehicleId), {
+      initialKm,
+      status,
+      active: status === "Active",
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.uid
+    });
+    toast("Vehicle initial KM and status updated.");
+    await refreshAdminData();
+  } catch (error) {
+    console.error("VEHICLE UPDATE ERROR", error);
+    toast("Could not update vehicle. Check Firestore update permissions.", true);
+  }
+}
+
+async function deleteVehicleRecord(vehicleId) {
+  if (!isAdmin()) return toast("Only Admin can delete vehicles.", true);
+  const v = vehicleData.find(item => item.id === vehicleId);
+  if (!v) return toast("Vehicle record not found. Refresh and try again.", true);
+  const linkedTrips = tripData.filter(t => t.vehicleId === vehicleId || normaliseVehicle(t.vehicleNo) === normaliseVehicle(vehicleNumber(v)));
+  const warning = `Permanently delete vehicle ${vehicleNumber(v)}? ${linkedTrips.length} trip record(s) reference this vehicle. Those trip records will NOT be deleted.`;
+  if (!window.confirm(warning)) return;
+  try {
+    await deleteDoc(doc(db, COLLECTION.vehicles, vehicleId));
+    toast("Vehicle deleted. Historical trip records were retained.");
+    await refreshAdminData();
+  } catch (error) {
+    console.error("VEHICLE DELETE ERROR", error);
+    toast("Could not delete vehicle. Check Firestore delete permissions.", true);
+  }
+}
+
+document.addEventListener("click", event => {
+  const edit = event.target.closest("[data-vehicle-edit]");
+  if (edit) return editVehicleRecord(edit.dataset.vehicleEdit);
+  const del = event.target.closest("[data-vehicle-delete]");
+  if (del) return deleteVehicleRecord(del.dataset.vehicleDelete);
 });
