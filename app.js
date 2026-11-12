@@ -596,7 +596,16 @@ function tripDestinationText(trip) {
   add(trip.additionalDestinations);
   add(trip.destination);
   add(trip.to);
-  return [...new Set(parts.filter(Boolean))].join(" → ");
+  return [...new Set(parts.filter(Boolean))].join(", ");
+}
+
+function requestedEmployeeDisplay(value) {
+  const id = String(value ?? "");
+  const matched = employeeData.find(e =>
+    e.id === id ||
+    String(val(e, ["employeeId", "Employee ID", "User ID", "userId"], "")) === id
+  );
+  return matched ? String(val(matched, ["name", "Name", "employeeName"], id)) : id;
 }
 
 function exportTripRegisterExcel() {
@@ -610,9 +619,18 @@ function exportTripRegisterExcel() {
       "Driver": t.driverName || "",
       "Department": t.department || "",
       "From": t.from || "",
-      "Destinations / To": tripDestinationText(t),
+      "Additional Places / Destination": tripDestinationText(t),
       "Purpose": t.purpose || "",
-      "Requested Employee": t.requestedEmployee || "",
+      "Requested Employee": (() => {
+        const requestedId = String(t.requestedEmployee || "");
+        const matched = employeeData.find(e =>
+          e.id === requestedId ||
+          String(val(e, ["employeeId", "Employee ID", "User ID", "userId"], "")) === requestedId
+        );
+        return matched
+          ? String(val(matched, ["name", "Name", "employeeName"], requestedId))
+          : requestedId;
+      })(),
       "Start Time": t.startTime || "",
       "End Time": t.endTime || "",
       "Opening KM": t.openingKm ?? "",
@@ -774,7 +792,7 @@ async function loadActiveTrip() {
   const d=snap.docs[0]; activeTripId=d.id; activeTripData={id:d.id,...d.data()};
   $("tripForm")?.classList.add("hidden"); $("activeTrip")?.classList.remove("hidden");
   if ($("tripNumber")) $("tripNumber").textContent=d.id;
-  if ($("activeSummary")) $("activeSummary").innerHTML=`<div class="summary-item"><small>Vehicle</small><strong>${esc(activeTripData.vehicleNo)}</strong></div><div class="summary-item"><small>Opening KM</small><strong>${esc(activeTripData.openingKm)}</strong></div><div class="summary-item"><small>Destination</small><strong>${esc((activeTripData.destinations||[]).join(", "))}</strong></div>`;
+  if ($("activeSummary")) $("activeSummary").innerHTML=`<div class="summary-item"><small>Vehicle</small><strong>${esc(activeTripData.vehicleNo)}</strong></div><div class="summary-item"><small>From</small><strong>${esc(activeTripData.from||"")}</strong></div><div class="summary-item"><small>Opening KM</small><strong>${esc(activeTripData.openingKm)}</strong></div><div class="summary-item"><small>Destination</small><strong>${esc((activeTripData.destinations||[]).join(", "))}</strong></div>`;
 }
 function bindDriverEvents() {
   $("vehicle")?.addEventListener("change",()=>{
@@ -815,6 +833,8 @@ async function startDriverTrip(e) {
     const vehicle=vehicleData.find(v=>v.id===$("vehicle").value);
     const opening=Number($("openingKm").value);
     const destinations=getDriverDestinations("destinationList");
+    const from=$("driverFrom")?.value.trim() || "";
+    if(!from)throw new Error("Enter the starting location.");
     if(!vehicle)throw new Error("Select an authorised vehicle.");
     if(!Number.isFinite(opening)||opening<0)throw new Error("Vehicle current KM is not valid.");
     if(!destinations.length)throw new Error("Enter at least one destination.");
@@ -824,9 +844,9 @@ async function startDriverTrip(e) {
     const ref=await addDoc(collection(db,COLLECTION.trips),{
       driverUid:currentUser.uid,driverName:profileName(),vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),openingKm:opening,
       department:$("department").value,requestedEmployee:requested,purpose:$("purpose").value.trim(),tripDate:$("tripDate").value||todayISO(),
-      startTime:$("startTime").value,destinations,status:"active",createdAt:serverTimestamp()
+      from,startTime:$("startTime").value,destinations,status:"active",createdAt:serverTimestamp()
     });
-    activeTripId=ref.id; activeTripData={id:ref.id,vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),openingKm:opening,destinations};
+    activeTripId=ref.id; activeTripData={id:ref.id,vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),from,openingKm:opening,destinations};
     await loadActiveTrip(); toast("Trip started successfully.");
   } catch(error) { console.error("START TRIP ERROR",error); alert(error.message||"Unable to start trip. Check Firestore rules."); }
 }
