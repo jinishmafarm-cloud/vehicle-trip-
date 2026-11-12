@@ -94,6 +94,23 @@ async function readCollection(name) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+/* ---------------- USER ID LOGIN ALIAS ---------------- */
+const LOGIN_ALIAS_DOMAIN = "mafarm-login.com";
+function loginAliasFromUserId(userId) {
+  const safeId = String(userId || "").trim().toLowerCase();
+  return `${safeId}@${LOGIN_ALIAS_DOMAIN}`;
+}
+
+// Show the generated Firebase Authentication email alias to the Admin
+// while creating a profile. This is the account email to create in Firebase Auth.
+$("newUserId")?.addEventListener("input", () => {
+  const id = $("newUserId").value.trim().toUpperCase();
+  const hint = $("newUserAliasHint");
+  if (hint) hint.textContent = id
+    ? `Create Firebase Authentication account with email: ${loginAliasFromUserId(id)}`
+    : "Login alias will be generated from this User ID.";
+});
+
 /* ---------------- LOGIN / SESSION ---------------- */
 function showRole(role) {
   $("loginPage").style.display = "none";
@@ -111,8 +128,14 @@ $("mainLoginForm")?.addEventListener("submit", async e => {
   button.disabled = true;
   output.textContent = "Signing in…";
   try {
-    let identity = $("mainIdentity").value.trim();
-    if (identity === "150884") identity = "operationhead@mafarm.in";
+    const userId = $("mainIdentity").value.trim().toUpperCase();
+    if (!/^[A-Z0-9._-]{2,40}$/.test(userId)) {
+      throw new Error("Enter a valid MAFARM User ID.");
+    }
+    // Firebase Email/Password Auth requires an email internally.
+    // MAFARM users enter only their User ID; the matching Auth account
+    // must be registered with this generated alias.
+    const identity = loginAliasFromUserId(userId);
     const credential = await signInWithEmailAndPassword(auth, identity, $("mainPassword").value);
     const snap = await getDoc(doc(db, COLLECTION.users, credential.user.uid));
     if (!snap.exists()) throw new Error("User profile not found. Check the User document ID against Firebase Authentication UID.");
@@ -124,7 +147,9 @@ $("mainLoginForm")?.addEventListener("submit", async e => {
     showRole(role);
   } catch (error) {
     console.error("LOGIN ERROR", error);
-    output.textContent = error.code === "auth/invalid-credential" ? "Invalid User ID/email or password." : (error.message || "Login failed.");
+    output.textContent = ["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(error.code)
+      ? "Invalid User ID or password. Check that the Firebase Authentication account uses the MAFARM login alias."
+      : (error.message || "Login failed.");
   } finally {
     button.disabled = false;
     button.textContent = "Sign in";
@@ -516,6 +541,7 @@ async function saveManagedUser(event) {
       "Name": name,
       "User ID": userId,
       "Mail ID": email,
+      "Login Alias": loginAliasFromUserId(userId),
       "Role": role,
       "Department": department,
       "Active": true,
