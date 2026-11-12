@@ -11,7 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, collection, query, where, getDocs,
-  addDoc, updateDoc, setDoc, serverTimestamp, limit
+  addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, limit
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
 
@@ -568,22 +568,22 @@ async function saveManagedUser(event) {
 async function loadUsers() { await refreshAdminData(); toast("User list refreshed."); }
 function renderUserTable() {
   const body = $("managedUsersBody"); if (!body) return;
-  body.innerHTML = userData.length ? userData.map(u=>`<tr><td>${esc(val(u,["User ID","userId"],""))}</td><td>${esc(val(u,["Name","name","employeeName"],""))}</td><td>${esc(val(u,["Mail ID","email","mailId"],""))}</td><td>${esc(val(u,["Role","role"],""))}</td><td>${activeRecord(u)?"Active":"Inactive"}</td></tr>`).join("") : `<tr><td colspan="5">No user records found.</td></tr>`;
+  body.innerHTML = userData.length ? userData.map(u=>`<tr><td>${esc(val(u,["User ID","userId"],""))}</td><td>${esc(val(u,["Name","name","employeeName"],""))}</td><td>${esc(val(u,["Mail ID","email","mailId"],""))}</td><td>${esc(val(u,["Role","role"],""))}</td><td>${activeRecord(u)?"Active":"Inactive"}</td><td><button type="button" class="row-delete-btn" data-delete-kind="driver" data-delete-id="${esc(u.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="6">No user records found.</td></tr>`;
 }
 function renderEmployeeTable() {
   const body = $("employeeTableBody"); if (!body) return;
-  body.innerHTML = employeeData.length ? employeeData.map(e=>`<tr><td>${esc(val(e,["employeeId","Employee ID"],e.id))}</td><td>${esc(val(e,["name","Name","employeeName"],""))}</td><td>${esc(val(e,["department","Department"],""))}</td><td>${activeRecord(e)?"Active":"Inactive"}</td></tr>`).join("") : `<tr><td colspan="4">No employee records found.</td></tr>`;
+  body.innerHTML = employeeData.length ? employeeData.map(e=>`<tr><td>${esc(val(e,["employeeId","Employee ID"],e.id))}</td><td>${esc(val(e,["name","Name","employeeName"],""))}</td><td>${esc(val(e,["department","Department"],""))}</td><td>${activeRecord(e)?"Active":"Inactive"}</td><td><button type="button" class="row-delete-btn" data-delete-kind="employee" data-delete-id="${esc(e.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No employee records found.</td></tr>`;
 }
 function renderDriverTable() {
   const body = $("driverTableBody"); if (!body) return;
-  body.innerHTML = driverData.length ? driverData.map(d=>`<tr><td>${esc(val(d,["Driver ID","driverId","User ID","userId"],d.id))}</td><td>${esc(d.name)}</td><td>${esc(val(d,["Mobile","mobile","mobileNumber"],""))}</td><td>Active</td></tr>`).join("") : `<tr><td colspan="4">No driver profiles found.</td></tr>`;
+  body.innerHTML = driverData.length ? driverData.map(d=>`<tr><td>${esc(val(d,["Driver ID","driverId","User ID","userId"],d.id))}</td><td>${esc(d.name)}</td><td>${esc(val(d,["Mobile","mobile","mobileNumber"],""))}</td><td>Active</td><td><button type="button" class="row-delete-btn" data-delete-kind="driver" data-delete-id="${esc(d.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No driver profiles found.</td></tr>`;
 }
 function renderTripTables() {
   const sorted = [...tripData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
   const latest = $("latestTrips");
   if (latest) latest.innerHTML = sorted.slice(0,12).map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td><span class="pill ${t.status==="completed"?"completed":"progress"}">${esc(t.status||"")}</span></td></tr>`).join("") || `<tr><td colspan="10">No trip records found.</td></tr>`;
   const body = $("tripRegisterBody");
-  if (body) body.innerHTML = sorted.map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.department||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td>${esc(t.status||"")}</td></tr>`).join("") || `<tr><td colspan="11">No trip records found.</td></tr>`;
+  if (body) body.innerHTML = sorted.map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.department||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td>${esc(t.status||"")}</td><td><button type="button" class="row-delete-btn" data-delete-kind="trip" data-delete-id="${esc(t.id)}">Delete</button></td></tr>`).join("") || `<tr><td colspan="12">No trip records found.</td></tr>`;
 }
 function renderFuelTable() {
   const sortedFuel = [...fuelData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
@@ -594,18 +594,41 @@ function renderFuelTable() {
 }
 function updateDashboardKpis() {
   const today = todayISO();
-  const todayTrips = tripData.filter(t=>t.tripDate===today);
-  if ($("kpiTrips")) $("kpiTrips").textContent = todayTrips.length;
-  const activeVehicleCount = vehicleData.filter(activeRecord).length;
-  const activeDriverCount = driverData.length;
-  const stats = document.querySelectorAll("#page-dashboard .stat strong");
-  if (stats[0]) stats[0].textContent = todayTrips.length;
-  if (stats[4]) stats[4].textContent = activeVehicleCount;
-  if (stats[5]) stats[5].textContent = activeDriverCount;
-  const snap = document.querySelectorAll("#page-dashboard .snapshot-row > strong");
-  if (snap[0]) snap[0].textContent = tripData.filter(t=>t.status==="active").length;
-  if (snap[2]) snap[2].textContent = employeeData.filter(activeRecord).length;
+  const todayTrips = tripData.filter(t => String(t.tripDate || "").slice(0,10) === today);
+  const todayFuel = fuelData.filter(f => String(f.fuelDate || f.date || "").slice(0,10) === today);
+  const activeVehicles = vehicleData.filter(activeRecord);
+  const activeDrivers = driverData.filter(activeRecord);
+  const activeEmployees = employeeData.filter(activeRecord);
+  const maintenanceVehicles = vehicleData.filter(v => {
+    const status = String(val(v, ["status","Status","availability","Availability"], "")).toLowerCase();
+    return status.includes("maintenance") || status.includes("repair") || status.includes("service");
+  });
+
+  const kmToday = todayTrips.reduce((sum,t) => sum + Number(t.distanceKm || (Number(t.closingKm)-Number(t.openingKm)) || 0), 0);
+  const litresToday = todayFuel.reduce((sum,f) => sum + Number(f.litres || f.quantity || 0), 0);
+  const efficiency = litresToday > 0 ? kmToday / litresToday : 0;
+
+  const set = (id, value) => { const el = $(id); if (el) el.textContent = value; };
+  set("kpiTrips", todayTrips.length);
+  set("kpiKmToday", kmToday.toLocaleString("en-IN", {maximumFractionDigits:1}));
+  set("kpiFuelToday", litresToday.toFixed(2));
+  set("kpiEfficiency", efficiency.toFixed(2));
+  set("kpiActiveVehicles", activeVehicles.length);
+  set("kpiActiveDrivers", activeDrivers.length);
+
+  set("snapTripsProgress", tripData.filter(t => String(t.status || "").toLowerCase() === "active").length);
+  set("snapFuelToday", todayFuel.length);
+  set("snapEmployees", activeEmployees.length);
+  set("snapMaintenance", maintenanceVehicles.length);
+
+  const active = $("availabilityActive");
+  const maintenance = $("availabilityMaintenance");
+  const idle = $("availabilityIdle");
+  if (active) active.textContent = activeVehicles.length - maintenanceVehicles.length;
+  if (maintenance) maintenance.textContent = maintenanceVehicles.length;
+  if (idle) idle.textContent = vehicleData.filter(v => activeRecord(v) && !maintenanceVehicles.includes(v)).length;
 }
+
 function filterDashboardTrips() {
   const q = ($("dashSearch")?.value||"").toLowerCase(); const status = ($("dashStatus")?.value||"").toLowerCase();
   document.querySelectorAll("#latestTrips tr").forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(q)||(status&&!row.textContent.toLowerCase().includes(status));});
@@ -797,3 +820,35 @@ async function saveDriverFuel(e) {
 
 /* ---------------- STARTUP ---------------- */
 console.log("MAFARM Vehicle Trip Management loaded.");
+
+/* ---------------- ADMIN DELETE ACTIONS ---------------- */
+async function deleteManagedRecord(kind, id) {
+  if (!isAdmin()) return toast("Only Admin can delete records.", true);
+  const config = {
+    employee: { collection: COLLECTION.employees, label: "employee" },
+    driver: { collection: COLLECTION.users, label: "driver user profile" },
+    trip: { collection: COLLECTION.trips, label: "trip" }
+  }[kind];
+  if (!config || !id) return;
+  const warning = kind === "trip"
+    ? "Delete this trip permanently? This will NOT automatically reverse the vehicle current KM."
+    : kind === "driver"
+      ? "Delete this driver's Firestore User profile? Their Firebase Authentication account will remain and they will no longer pass the active profile check."
+      : "Delete this employee record permanently?";
+  if (!window.confirm(warning)) return;
+  try {
+    await deleteDoc(doc(db, config.collection, id));
+    toast(`${config.label} deleted successfully.`);
+    await refreshAdminData();
+  } catch (error) {
+    console.error("Delete failed:", error);
+    toast(`Could not delete ${config.label}. Check Firestore rules and permissions.`, true);
+  }
+}
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-delete-kind][data-delete-id]");
+  if (!button) return;
+  deleteManagedRecord(button.dataset.deleteKind, button.dataset.deleteId);
+});
+
