@@ -1,1017 +1,396 @@
-/* ============================================================
-   MAFARM VEHICLE TRIP MANAGEMENT
-   GitHub Pages + Firebase Auth + Firestore
-   Vehicle Master: manual + Excel/CSV bulk import (50+ vehicles)
-   No Cloud Functions required for this version.
-============================================================ */
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAFARM Vehicle Trip Management</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="https://unpkg.com/lucide@latest"></script><link rel="stylesheet" href="style.css"></head><body><div id="loginPage" class="login-shell">
+<section class="login-brand"><div class="brand-mark">✦ MAFARM</div><div><h1>Vehicle Trip<br>Management System</h1><p>Secure vehicle operations, trip records and fuel management.</p></div><small>Manappuram Agro Farms Limited</small></section>
+<section class="login-panel"><h2>Welcome back</h2><p>Sign in using your MAFARM User ID and password.</p><form id="mainLoginForm"><label>MAFARM User ID</label><input id="mainIdentity" required autocomplete="username" autocapitalize="characters" placeholder="Enter your User ID"><label>Password</label><input id="mainPassword" type="password" required autocomplete="current-password" placeholder="Enter password"><button type="submit" id="mainLoginBtn">Sign in</button><p id="mainLoginMessage" aria-live="polite"></p></form></section></div><div id="adminWorkspace" class="role-workspace" style="display:none">
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+  <div class="brand"><span class="leaf">✦</span><span>MAFARM</span></div>
+  <div class="nav-scroll">
+    <div class="nav-caption">MAIN MENU</div>
+    <button class="nav-link active" data-page="dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</button>
+    <button class="nav-link" data-page="trip-entry"><i data-lucide="route"></i>Admin Trip Entry</button>
+    <button class="nav-link" data-page="trip-register"><i data-lucide="clipboard-list"></i>Trip Register</button>
+    <div class="nav-caption">MASTER MANAGEMENT</div>
+    <button class="nav-link" data-page="user-management"><i data-lucide="user-cog"></i>User Management</button>
+    <button class="nav-link" data-page="drivers"><i data-lucide="contact-round"></i>Driver Management</button>
+    <button class="nav-link" data-page="employees"><i data-lucide="users"></i>Employee Management</button>
+    <button class="nav-link" data-page="vehicles"><i data-lucide="car-front"></i>Vehicle Management</button>
+    <div class="nav-caption">FUEL MANAGEMENT</div>
+    <button class="nav-link" data-page="fuel-entry"><i data-lucide="fuel"></i>Fuel Entry</button>
+    <button class="nav-link" data-page="fuel-register"><i data-lucide="receipt-text"></i>Fuel Register</button>
+    <div class="nav-caption">REPORTS & DATA</div>
+    <button class="nav-link" data-page="reports"><i data-lucide="chart-no-axes-combined"></i>Reports</button>
+    <button class="nav-link" data-page="bulk-upload"><i data-lucide="cloud-upload"></i>Bulk Upload</button>
+    <button class="nav-link" data-page="settings"><i data-lucide="settings"></i>Settings</button>
+  </div>
+  <div class="side-foot">MAFARM Operations<br><small>Vehicle Management Portal</small></div>
+</aside>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {
-  getFirestore, doc, getDoc, collection, query, where, getDocs,
-  addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, limit
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
+<main class="main">
+<header class="topbar">
+  <button class="mobile-menu" id="menuBtn"><i data-lucide="menu"></i></button>
+  <div class="top-title">Vehicle Trip Management System <span>/ Admin</span></div>
+  <div class="top-right"><button type="button" onclick="window.mafarmLogout?.()" style="padding:8px 12px;border:0;border-radius:8px;background:#eef5ef;color:#17623d;cursor:pointer">Logout</button><button class="bell"><i data-lucide="bell"></i><b></b></button><div class="avatar">A</div><div class="admin"><strong>Admin</strong><small>Operation Head</small></div><i data-lucide="chevron-down"></i></div>
+</header>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB36kVpDjxZsqdN7ZWVFSYpsU1rrNFDZgk",
-  authDomain: "vehicle-trip-entry-35f69.firebaseapp.com",
-  projectId: "vehicle-trip-entry-35f69",
-  storageBucket: "vehicle-trip-entry-35f69.firebasestorage.app",
-  messagingSenderId: "751996536767",
-  appId: "1:751996536767:web:69a3a2e4f4ae4c5ef7430a",
-  measurementId: "G-ZBY022XKHX"
-};
+<div class="content">
+<!-- DASHBOARD -->
+<section class="page active" id="page-dashboard">
+ <div class="page-head"><div><div class="eyebrow">OVERVIEW</div><h1>Admin Dashboard</h1><p>Daily vehicle operations at a glance.</p></div><div class="today-chip"><i data-lucide="calendar-days"></i><span id="today"></span></div></div>
+ <div class="stats">
+  <div class="stat s-green"><span><i data-lucide="route"></i></span><div><small>Today's Trips</small><strong id="kpiTrips">0</strong></div></div>
+  <div class="stat s-blue"><span><i data-lucide="gauge"></i></span><div><small>Total KM Today</small><strong id="kpiKmToday">0</strong></div></div>
+  <div class="stat s-amber"><span><i data-lucide="fuel"></i></span><div><small>Fuel Consumed</small><strong><span id="kpiFuelToday">0</span> <em>Ltr</em></strong></div></div>
+  <div class="stat s-purple"><span><i data-lucide="chart-no-axes-combined"></i></span><div><small>Average Efficiency</small><strong><span id="kpiEfficiency">0</span> <em>km/l</em></strong></div></div>
+  <div class="stat s-mint"><span><i data-lucide="car-front"></i></span><div><small>Active Vehicles</small><strong id="kpiActiveVehicles">0</strong></div></div>
+  <div class="stat s-rose"><span><i data-lucide="contact-round"></i></span><div><small>Active Drivers</small><strong id="kpiActiveDrivers">0</strong></div></div>
+ </div>
+ <div class="dash-grid">
+  <section class="card quick-card"><div class="card-title"><h2><i data-lucide="zap"></i> Quick Actions</h2><span>Shortcuts</span></div>
+   <div class="quick-grid">
+    <button data-go="trip-entry"><i data-lucide="route"></i><b>Admin Trip Entry</b><small>Record a completed trip</small></button>
+    <button data-go="fuel-entry"><i data-lucide="fuel"></i><b>Fuel Entry</b><small>Record refuelling</small></button>
+    <button data-go="drivers"><i data-lucide="user-plus"></i><b>Add Driver</b><small>Driver registration</small></button>
+    <button data-go="employees"><i data-lucide="users"></i><b>Add Employee</b><small>Employee registration</small></button>
+    <button data-go="vehicles"><i data-lucide="car-front"></i><b>Add Vehicle</b><small>Vehicle master</small></button>
+    <button data-go="bulk-upload"><i data-lucide="file-up"></i><b>Bulk Upload</b><small>Excel / CSV import</small></button>
+   </div>
+  </section>
+  <section class="card snapshot"><div class="card-title"><h2><i data-lucide="activity"></i> Operations Snapshot</h2><span class="live">● Live preview</span></div>
+   <div class="snapshot-row"><div class="snap-icon green"><i data-lucide="car-front"></i></div><div><b>Trips in Progress</b><small>Vehicles currently on trip</small></div><strong id="snapTripsProgress">0</strong></div>
+   <div class="snapshot-row"><div class="snap-icon amber"><i data-lucide="fuel"></i></div><div><b>Fuel Entries Today</b><small>Refuelling records submitted</small></div><strong id="snapFuelToday">0</strong></div>
+   <div class="snapshot-row"><div class="snap-icon blue"><i data-lucide="users"></i></div><div><b>Registered Employees</b><small>Active employee master records</small></div><strong id="snapEmployees">0</strong></div>
+   <div class="snapshot-row"><div class="snap-icon purple"><i data-lucide="truck"></i></div><div><b>Vehicles Under Maintenance</b><small>Currently unavailable</small></div><strong id="snapMaintenance">0</strong></div>
+  </section>
+ </div>
+ <section class="card recent-card">
+  <div class="card-title"><div><h2><i data-lucide="history"></i> Latest Trips</h2><p>Most recent trip records across all vehicles.</p></div><button class="outline-btn" data-go="trip-register">View All Trips <i data-lucide="arrow-up-right"></i></button></div>
+  <div class="filters compact"><input id="dashSearch" placeholder="Search vehicle, driver or destination"><select id="dashStatus"><option value="">All statuses</option><option>Completed</option><option>In Progress</option></select></div>
+  <div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle No</th><th>Driver</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="latestTrips"><tr><td colspan="10">No trip records found.</td></tr></tbody></table></div>
+ </section>
+ <div class="dash-bottom">
+  <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="car-front"></i> Vehicle Availability</h2><button class="link-btn" data-go="vehicles">Manage</button></div><div class="availability"><div><strong id="availabilityActive">0</strong><small>Active</small></div><div><strong id="availabilityMaintenance">0</strong><small>Maintenance</small></div><div><strong id="availabilityIdle">0</strong><small>Idle</small></div></div><div class="progress-track"><span></span></div><small class="hint">Vehicle availability from registered records</small></section>
+  <section class="card mini-panel"><div class="card-title"><h2><i data-lucide="bar-chart-3"></i> Report Shortcuts</h2><button class="link-btn" data-go="reports">All Reports</button></div><div class="report-shortcuts"><button data-report="driver">Driver-wise trips <i data-lucide="chevron-right"></i></button><button data-report="vehicle">Vehicle-wise KM <i data-lucide="chevron-right"></i></button><button data-report="fuel">Fuel consumption <i data-lucide="chevron-right"></i></button><button data-report="efficiency">Driver efficiency <i data-lucide="chevron-right"></i></button></div></section>
+ </div>
+</section>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const $ = id => document.getElementById(id);
+<!-- ADMIN COMPLETED TRIP ENTRY -->
+<section class="page" id="page-trip-entry">
+ <div class="page-head"><div><div class="eyebrow">TRIP MANAGEMENT</div><h1>Admin Trip Entry</h1><p>Admin records a completed trip with start and closing details.</p></div><span class="page-badge"><i data-lucide="check-circle"></i> Completed Trip Record</span></div>
+ <form id="adminTripForm" class="card form-card">
+  <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="car-front"></i></span><div><h2>Trip & Vehicle Details</h2><p>Choose the vehicle and driver for this trip.</p></div></div>
+   <div class="form-grid">
+    <div class="field"><label>Vehicle Number <b>*</b></label><select id="adminVehicle" required><option value="">Select vehicle</option></select></div>
+    <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option></select></div>
+    <div class="field"><label>Department <b>*</b></label><select id="adminDepartmentSelect" required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option></select></div>
+    <div class="field"><label>Trip Date <b>*</b></label><input id="adminTripDate" type="date" required></div>
+    <div class="field"><label>Trip Purpose <b>*</b></label><input id="adminPurpose" placeholder="e.g. Material delivery" required></div>
+   </div>
+  </div>
+  <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="map-pinned"></i></span><div><h2>Route & Time Details</h2><p>Record the starting point, destinations and return point.</p></div></div>
+   <div class="form-grid">
+    <div class="field"><label>From Location <b>*</b></label><input id="adminFrom" placeholder="Starting location" required></div>
+    <div class="field"><label>To Location <b>*</b></label><input id="adminTo" placeholder="Final destination" required></div>
+    <div class="field"><label>Start Time <b>*</b></label><input id="adminStartTime" type="time" required></div>
+    <div class="field"><label>Closing Time <b>*</b></label><input id="adminEndTime" type="time" required></div>
+   </div>
+   <div class="destination-block"><div class="destination-head"><div><b>Additional Destinations</b><small>Add any intermediate stops visited during the trip.</small></div><button type="button" class="outline-btn" id="addAdminDestination"><i data-lucide="plus"></i> Add Destination</button></div><div id="adminDestinations"><div class="destination-line"><span>1</span><input placeholder="Additional destination (optional)"><button type="button" class="remove-dest">×</button></div></div></div>
+  </div>
+  <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="gauge"></i></span><div><h2>Kilometre Details</h2><p>Opening KM is automatically filled from the latest vehicle KM record.</p></div></div>
+   <div class="form-grid three">
+    <div class="field"><label>Opening KM <span class="auto-tag">AUTO</span></label><input id="adminOpeningKm" readonly placeholder="Select vehicle"></div>
+    <div class="field"><label>Closing KM <b>*</b></label><input id="adminClosingKm" type="number" min="0" placeholder="Enter closing KM" required></div>
+    <div class="field"><label>Total Distance (KM)</label><input id="adminDistance" readonly placeholder="Auto calculated"></div>
+   </div>
+   <div class="field top-gap"><label>Remarks</label><textarea id="adminTripRemarks" rows="3" placeholder="Enter trip completion remarks"></textarea></div>
+  </div>
+  <div class="form-footer"><span><i data-lucide="info"></i> Completed trips are saved to Firebase and update the vehicle current KM.</span><div><button type="reset" class="btn light">Clear Form</button><button type="submit" class="btn primary"><i data-lucide="save"></i> Save Completed Trip</button></div></div>
+ </form>
+</section>
 
-let currentUser = null;
-let currentProfile = null;
-let vehicleData = [];
-let employeeData = [];
-let userData = [];
-let tripData = [];
-let fuelData = [];
-let driverData = [];
-let activeTripId = null;
-let activeTripData = null;
-let vehicleImportRows = [];
-let currentReportType = "";
-let adminInitialised = false;
-let driverInitialised = false;
+<!-- TRIP REGISTER -->
+<section class="page" id="page-trip-register">
+ <div class="page-head"><div><div class="eyebrow">TRIP MANAGEMENT</div><h1>Trip Register</h1><p>Search, filter and review all trip entries.</p></div><button class="btn primary" data-go="trip-entry"><i data-lucide="plus"></i> Add Completed Trip</button></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input id="tripSearch" placeholder="Search trip ID, vehicle, driver or place"></div><input type="date"><input type="date"><select><option>All departments</option><option>Farm Operations</option><option>Retail</option></select><select><option>All status</option><option>Completed</option><option>In Progress</option></select><button class="btn light" id="exportTripRegisterBtn" type="button">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>Department</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th><th>Action</th></tr></thead><tbody id="tripRegisterBody"><tr><td colspan="12">No trip records found.</td></tr></tbody></table></div><div class="table-foot">Trip records loaded from Firestore</div></div>
+</section>
 
-const COLLECTION = { users: "User", vehicles: "Vehicles", employees: "Employees", trips: "Trips", fuel: "Fuel" };
+<!-- DRIVERS -->
+<!-- USER MANAGEMENT -->
+<section class="page" id="page-user-management">
+ <div class="page-head"><div><div class="eyebrow">ACCESS CONTROL</div><h1>User Management</h1><p>Create Admin and Driver login accounts and manage access details.</p></div><span class="page-badge">User Master</span></div>
+ <div class="split">
+  <form id="managedUserForm" class="card form-card">
+   <div class="card-title"><h2><i data-lucide="user-plus"></i> Add New User</h2></div>
+   <div class="form-grid">
+    <div class="field"><label>User ID <b>*</b></label><input id="newUserId" required placeholder="e.g. DRIVER1"><small class="login-alias-hint" id="newUserAliasHint">Login alias will be generated from this User ID.</small></div>
+    <div class="field"><label>Employee Name <b>*</b></label><input id="newUserName" required placeholder="Full name"></div>
+    <div class="field"><label>Role <b>*</b></label><select id="newUserRole" required><option value="">Select role</option><option value="Driver">Driver</option><option value="Admin">Admin</option><option value="User">User</option></select></div>
+    <div class="field"><label>Email <b>*</b></label><input id="newUserEmail" type="email" required placeholder="name@mafarm.in"></div>
+    <div class="field"><label>Firebase Authentication UID <b>*</b></label><input id="newUserUid" required placeholder="Paste UID from Firebase Authentication"></div>
+    <div class="field"><label>Mobile Number</label><input id="newUserMobile" type="tel" placeholder="Mobile number"></div>
+    <div class="field"><label>Department</label><select id="newUserDepartment"><option value="">Select department</option><option>Operations</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Driver ID (if Driver)</label><input id="newUserDriverId" placeholder="DRV019"></div>
+    <div class="field"><label>Assigned Vehicle (optional)</label><input id="newUserVehicle" placeholder="KL 07 AB 1234"></div>
+   </div>
+   <div class="form-footer"><small>Free Firebase Spark process: create the Firebase Authentication account using the generated login alias shown after entering the User ID. Then paste its exact Authentication UID here. This form creates the Firestore User profile; passwords are never stored.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Save Employee Profile</button></div></div>
+   <p id="managedUserMessage" class="form-message" aria-live="polite"></p>
+  </form>
+  <section class="card">
+   <div class="card-title"><div><h2><i data-lucide="users"></i> Registered Users</h2><p>Accounts currently saved in Firestore.</p></div><button class="outline-btn" type="button" id="refreshUsersBtn">Refresh</button></div>
+   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="6">Loading user records…</td></tr></tbody></table></div>
+  </section>
+ </div>
+</section>
+<section class="page" id="page-drivers">
+ <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Driver Management</h1><p>Create and maintain driver profiles and login access.</p></div><span class="page-badge">Driver Master</span></div>
+ <div class="split">
+  <form id="driverForm" class="card form-card"><div class="card-title"><h2><i data-lucide="user-round-plus"></i> Driver Registration</h2></div><div class="form-grid">
+   <div class="field"><label>Driver ID <b>*</b></label><input placeholder="DRV019" required></div><div class="field"><label>Driver Name <b>*</b></label><input placeholder="Full name" required></div>
+   <div class="field"><label>Mobile Number <b>*</b></label><input type="tel" placeholder="Mobile number" required></div><div class="field"><label>Email</label><input type="email" placeholder="Email address"></div>
+   <div class="field"><label>Department</label><select><option>Select department</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div><div class="field"><label>License Number</label><input placeholder="Driving licence number"></div>
+   <div class="field"><label>License Valid Until</label><input type="date"></div><div class="field"><label>Login User ID <b>*</b></label><input placeholder="Driver login ID" required></div>
+   <div class="field"><label>Login Password / Invite</label><input placeholder="Set temporary password"></div><div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
+  </div><div class="form-footer"><span>Role will be assigned as Driver.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Driver</button></div></form>
+  <section class="card"><div class="card-title"><h2><i data-lucide="contact-round"></i> Driver List</h2></div><div class="register-tools"><input placeholder="Search driver / ID"><select><option>All status</option><option>Active</option><option>Inactive</option></select></div><div class="table-scroll"><table><thead><tr><th>Driver ID</th><th>Name</th><th>Mobile</th><th>Status</th><th>Action</th></tr></thead><tbody id="driverTableBody"><tr><td colspan="5">No driver profiles found.</td></tr></tbody></table></div></section>
+ </div>
+</section>
 
-function val(obj, keys, fallback = "") {
-  for (const key of keys) if (obj && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  return fallback;
-}
-function esc(value) {
-  return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-function profileName(p = currentProfile) { return val(p, ["Name", "name", "employeeName"], "User"); }
-function profileRole(p = currentProfile) { return String(val(p, ["Role", "role"], "")).toLowerCase(); }
-function profileActive(p) { return val(p, ["Active", "active"], false) === true; }
-function isAdmin() { return profileRole() === "admin"; }
-function isDriver() { return profileRole() === "driver"; }
-function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
-function toast(message, isError = false) {
-  const el = $("toast");
-  if (!el) { if (isError) console.error(message); else console.log(message); return; }
-  el.textContent = message;
-  el.classList.add("show");
-  el.style.background = isError ? "#a52b25" : "#075b35";
-  clearTimeout(window._mafarmToastTimer);
-  window._mafarmToastTimer = setTimeout(() => el.classList.remove("show"), 3500);
-}
-function message(id, text, error = false) {
-  const el = $(id); if (!el) return;
-  el.textContent = text;
-  el.style.color = error ? "#b42318" : "#08713a";
-}
-function setBusy(button, busy, label) {
-  if (!button) return;
-  button.disabled = busy;
-  if (label) button.textContent = busy ? "Please wait…" : label;
-}
-function normaliseVehicle(value) { return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
-function vehicleNumber(v) { return val(v, ["vehicleNo", "vehicleNumber", "VehicleNo", "registrationNumber"], v.id || ""); }
-function vehicleCurrentKm(v) { return Number(val(v, ["currentKm", "lastClosingKm", "initialKm", "InitialKM"], 0)); }
-function activeRecord(record) {
-  const status = String(val(record, ["status", "Status"], "")).toLowerCase();
-  if (status.includes("maintenance") || status === "inactive") return false;
-  return val(record, ["active", "Active"], true) !== false;
-}
-function formatDate(value) {
-  if (!value) return "";
-  if (value?.toDate) value = value.toDate();
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("en-IN");
-}
-async function readCollection(name) {
-  const snap = await getDocs(collection(db, name));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
+<!-- EMPLOYEES -->
+<section class="page" id="page-employees">
+ <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Employee Management</h1><p>Maintain employee records for trip requests and department mapping.</p></div><span class="page-badge">Employee Master</span></div>
+ <div class="split">
+  <form id="employeeForm" class="card form-card"><div class="card-title"><h2><i data-lucide="user-plus"></i> Employee Registration</h2></div><div class="form-grid">
+   <div class="field"><label>Employee ID <b>*</b></label><input placeholder="EMP019" required></div><div class="field"><label>Employee Name <b>*</b></label><input placeholder="Full name" required></div>
+   <div class="field"><label>Department <b>*</b></label><select required><option value="">Select department</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div><div class="field"><label>Designation</label><input placeholder="Designation"></div>
+   <div class="field"><label>Mobile Number</label><input type="tel" placeholder="Mobile number"></div><div class="field"><label>Email</label><input type="email" placeholder="Email address"></div>
+   <div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
+  </div><div class="form-footer"><span>Employee can be selected as requested person in a trip.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Employee</button></div></form>
+  <section class="card"><div class="card-title"><h2><i data-lucide="users"></i> Employee List</h2></div><div class="register-tools"><input placeholder="Search employee / ID"><select><option>All departments</option><option>Farm</option><option>Retail</option></select></div><div class="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Status</th><th>Action</th></tr></thead><tbody id="employeeTableBody"><tr><td colspan="4">No employee records found.</td></tr></tbody></table></div></section>
+ </div>
+</section>
 
-/* ---------------- USER ID LOGIN ALIAS ---------------- */
-const LOGIN_ALIAS_DOMAIN = "mafarm-login.com";
-function loginAliasFromUserId(userId) {
-  const safeId = String(userId || "").trim().toLowerCase();
-  return `${safeId}@${LOGIN_ALIAS_DOMAIN}`;
-}
+<!-- VEHICLES -->
+<section class="page" id="page-vehicles">
+ <div class="page-head"><div><div class="eyebrow">MASTER MANAGEMENT</div><h1>Vehicle Management</h1><p>Register 50+ vehicles, import Excel/CSV records and maintain current kilometre readings.</p></div><span class="page-badge">Vehicle Master</span></div>
+ <div class="vehicle-kpis">
+  <div class="vehicle-kpi"><small>Total Vehicles</small><strong id="vehicleTotal">0</strong></div>
+  <div class="vehicle-kpi"><small>Active Vehicles</small><strong id="vehicleActive">0</strong></div>
+  <div class="vehicle-kpi"><small>Inactive Vehicles</small><strong id="vehicleInactive">0</strong></div>
+ </div>
+ <div class="vehicle-master-grid">
+  <form id="vehicleMasterForm" class="card form-card">
+   <div class="card-title"><h2><i data-lucide="car-front"></i> Vehicle Registration</h2></div>
+   <div class="form-grid">
+    <div class="field"><label>Vehicle Number <b>*</b></label><input id="vehicleNumber" placeholder="KL 07 AB 4581" required maxlength="24"></div>
+    <div class="field"><label>Vehicle Type <b>*</b></label><select id="vehicleType" required><option value="">Select type</option><option>Car</option><option>SUV</option><option>Pickup</option><option>Van</option><option>Truck</option><option>Lorry</option><option>Bus</option><option>Two Wheeler</option><option>Other</option></select></div>
+    <div class="field"><label>Initial KM <b>*</b></label><input id="vehicleInitialKm" type="number" min="0" step="0.1" placeholder="Initial odometer reading" required></div>
+    <div class="field"><label>Fuel Type</label><select id="vehicleFuelType"><option value="">Select fuel type</option><option>Diesel</option><option>Petrol</option><option>Electric</option><option>CNG</option><option>Hybrid</option></select></div>
+    <div class="field"><label>Registration Date</label><input id="vehicleRegistrationDate" type="date"></div>
+    <div class="field"><label>Assigned Department</label><select id="vehicleDepartment"><option>Common Pool</option><option>Operations</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
+    <div class="field"><label>Assigned Driver</label><select id="vehicleAssignedDriver"><option value="">No Driver Assigned</option></select></div>
+    <div class="field"><label>Vehicle Status</label><select id="vehicleStatus"><option>Active</option><option>Maintenance</option><option>Inactive</option></select></div>
+    <div class="field full-width"><label>Remarks</label><textarea id="vehicleRemarks" rows="2" placeholder="Optional remarks"></textarea></div>
+   </div>
+   <div class="form-footer"><span>Current KM starts from Initial KM and updates after completed trips for assigned drivers.</span><button class="btn primary" id="saveVehicleBtn" type="submit"><i data-lucide="save"></i> Save Vehicle</button></div>
+   <p id="vehicleMessage" class="form-message" aria-live="polite"></p>
+  </form>
+  <section class="card vehicle-bulk-card">
+   <div class="card-title"><h2><i data-lucide="file-spreadsheet"></i> Excel / CSV Bulk Upload</h2></div>
+   <p class="bulk-help">Register multiple vehicles at once. Supports XLSX, XLS and CSV files. No fixed 50-vehicle limit.</p>
+   <a href="#" id="downloadVehicleTemplate" class="template-link">Download Vehicle Excel Template</a>
+   <div class="field"><label>Select Excel / CSV File</label><input type="file" id="vehicleBulkFile" accept=".xlsx,.xls,.csv"></div>
+   <div class="bulk-actions"><button type="button" class="btn light" id="previewVehicleUpload">Preview & Validate</button><button type="button" class="btn primary" id="importVehiclesBtn" disabled>Import Valid Vehicles</button></div>
+   <p id="vehicleBulkMessage" class="form-message" aria-live="polite"></p>
+   <div id="vehicleUploadPreview" class="vehicle-preview"></div>
+  </section>
+ </div>
+ <section class="card vehicle-register-card">
+  <div class="card-title"><div><h2><i data-lucide="list"></i> Vehicle Register</h2><p>Live records from the Firestore Vehicles collection.</p></div><button type="button" class="outline-btn" id="refreshVehiclesBtn">Refresh</button></div>
+  <div class="register-tools"><input id="vehicleSearch" placeholder="Search vehicle number, type, driver or department"><select id="vehicleStatusFilter"><option value="">All status</option><option value="Active">Active</option><option value="Under Maintenance">Under Maintenance</option><option value="Inactive">Inactive</option></select></div>
+  <div class="table-scroll"><table><thead><tr><th>Vehicle No</th><th>Type</th><th>Initial KM</th><th>Current KM</th><th>Assigned Driver</th><th>Department</th><th>Status</th><th>Actions</th></tr></thead><tbody id="vehicleTableBody"><tr><td colspan="8">Loading vehicles…</td></tr></tbody></table></div>
+ </section>
+</section>
 
-// Show the generated Firebase Authentication email alias to the Admin
-// while creating a profile. This is the account email to create in Firebase Auth.
-$("newUserId")?.addEventListener("input", () => {
-  const id = $("newUserId").value.trim().toUpperCase();
-  const hint = $("newUserAliasHint");
-  if (hint) hint.textContent = id
-    ? `Create Firebase Authentication account with email: ${loginAliasFromUserId(id)}`
-    : "Login alias will be generated from this User ID.";
-});
+<!-- FUEL ENTRY -->
+<section class="page" id="page-fuel-entry">
+ <div class="page-head"><div><div class="eyebrow">FUEL MANAGEMENT</div><h1>Fuel Entry</h1><p>Record fuel filling against a vehicle and odometer reading.</p></div><span class="page-badge">Fuel Transaction</span></div>
+ <div class="split">
+  <form id="fuelEntryForm" class="card form-card"><div class="card-title"><h2><i data-lucide="fuel"></i> New Fuel Entry</h2></div><div class="form-grid">
+   <div class="field"><label>Vehicle Number <b>*</b></label><select id="fuelVehicleAdmin" required><option value="">Select vehicle</option></select></div><div class="field"><label>Driver <b>*</b></label><select id="fuelDriverAdmin" required><option value="">Select driver</option></select></div>
+   <div class="field"><label>Fuel Date <b>*</b></label><input id="adminFuelDate" type="date" required></div><div class="field"><label>Fuel Time</label><input id="adminFuelTime" type="time"></div>
+   <div class="field"><label>KM Reading <b>*</b></label><input id="adminFuelKm" type="number" min="0" placeholder="Odometer reading" required></div><div class="field"><label>Fuel Quantity (Litres) <b>*</b></label><input id="adminFuelLitres" type="number" min="0.01" step="0.01" placeholder="e.g. 35.50" required></div>
+   <div class="field"><label>Amount (₹) <b>*</b></label><input id="adminFuelAmount" type="number" min="0" step="0.01" placeholder="Total amount" required></div><div class="field"><label>Fuel Rate (₹ / Ltr)</label><input id="adminFuelRate" type="number" step="0.01" placeholder="Auto calculate from amount"></div>
+   <div class="field"><label>Fuel Station</label><input id="adminFuelStation" placeholder="Pump / station name"></div><div class="field"><label>Bill / Invoice Number</label><input id="adminFuelBill" placeholder="Bill reference"></div>
+   <div class="field full"><label>Remarks</label><textarea id="adminFuelRemarks" rows="3" placeholder="Additional details"></textarea></div>
+  </div><div class="form-footer"><span>Attach bill image can be enabled with Firebase Storage.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Fuel Entry</button></div></form>
+  <section class="card"><div class="card-title"><h2><i data-lucide="history"></i> Recent Fuel Entries</h2></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>KM</th><th>Litres</th><th>Amount</th></tr></thead><tbody id="fuelRecentBody"><tr><td colspan="5">No fuel entries found.</td></tr></tbody></table></div></section>
+ </div>
+</section>
 
-/* ---------------- LOGIN / SESSION ---------------- */
-function showRole(role) {
-  $("loginPage").style.display = "none";
-  $("adminWorkspace").style.display = role === "admin" ? "block" : "none";
-  $("driverWorkspace").style.display = role === "driver" ? "block" : "none";
-  if (role === "admin") initAdminUI();
-  if (role === "driver") initDriverUI();
-  if (window.lucide) window.lucide.createIcons();
-}
+<!-- FUEL REGISTER -->
+<section class="page" id="page-fuel-register">
+ <div class="page-head"><div><div class="eyebrow">FUEL MANAGEMENT</div><h1>Fuel Register</h1><p>Search and review fuel transactions.</p></div><button class="btn primary" data-go="fuel-entry"><i data-lucide="plus"></i> Add Fuel Entry</button></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input placeholder="Search vehicle, driver or bill"></div><input type="date"><input type="date"><select><option>All vehicles</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Driver</th><th>KM</th><th>Fuel Ltr</th><th>Amount</th><th>Station</th><th>Bill No</th></tr></thead><tbody id="fuelRegisterBody"><tr><td colspan="8">No fuel records found.</td></tr></tbody></table></div></div>
+</section>
 
-$("mainLoginForm")?.addEventListener("submit", async e => {
-  e.preventDefault();
-  const button = $("mainLoginBtn");
-  const output = $("mainLoginMessage");
-  button.disabled = true;
-  output.textContent = "Signing in…";
-  try {
-    const userId = $("mainIdentity").value.trim().toUpperCase();
-    if (!/^[A-Z0-9._-]{2,40}$/.test(userId)) {
-      throw new Error("Enter a valid MAFARM User ID.");
-    }
-    // Firebase Email/Password Auth requires an email internally.
-    // MAFARM users enter only their User ID; the matching Auth account
-    // must be registered with this generated alias.
-    const identity = loginAliasFromUserId(userId);
-    const credential = await signInWithEmailAndPassword(auth, identity, $("mainPassword").value);
-    const snap = await getDoc(doc(db, COLLECTION.users, credential.user.uid));
-    if (!snap.exists()) throw new Error("User profile not found. Check the User document ID against Firebase Authentication UID.");
-    const p = snap.data();
-    const role = profileRole(p);
-    if (!profileActive(p) || !["admin", "driver"].includes(role)) throw new Error("Account inactive or role not permitted. Check Active and Role fields in User profile.");
-    currentUser = credential.user;
-    currentProfile = p;
-    showRole(role);
-  } catch (error) {
-    console.error("LOGIN ERROR", error);
-    output.textContent = ["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(error.code)
-      ? "Invalid User ID or password. Check that the Firebase Authentication account uses the MAFARM login alias."
-      : (error.message || "Login failed.");
-  } finally {
-    button.disabled = false;
-    button.textContent = "Sign in";
-  }
-});
+<!-- REPORTS -->
+<section class="page" id="page-reports">
+ <div class="page-head"><div><div class="eyebrow">ANALYTICS</div><h1>Reports & Analysis</h1><p>Select a report, apply filters and export results.</p></div></div>
+ <div class="report-grid">
+  <button class="report-card" data-report="driver"><span class="report-icon green"><i data-lucide="user-round"></i></span><b>Driver-wise Report</b><small>Trips, total KM, destinations and driver activity.</small><i data-lucide="arrow-up-right"></i></button>
+  <button class="report-card" data-report="vehicle"><span class="report-icon blue"><i data-lucide="car-front"></i></span><b>Vehicle-wise Report</b><small>Vehicle utilisation, trip history and kilometres.</small><i data-lucide="arrow-up-right"></i></button>
+  <button class="report-card" data-report="fuel"><span class="report-icon amber"><i data-lucide="fuel"></i></span><b>Fuel Report</b><small>Fuel quantity, amount, rate and consumption.</small><i data-lucide="arrow-up-right"></i></button>
+  <button class="report-card" data-report="efficiency"><span class="report-icon purple"><i data-lucide="gauge"></i></span><b>Driver-wise Efficiency</b><small>Distance travelled divided by fuel consumed.</small><i data-lucide="arrow-up-right"></i></button>
+ </div>
+ <section class="card report-result"><div class="card-title"><h2 id="reportTitle">Report Preview</h2><button class="btn light">Export Excel</button></div><div class="report-filters"><div class="field"><label>From Date</label><input type="date"></div><div class="field"><label>To Date</label><input type="date"></div><div class="field"><label>Department</label><select><option>All Departments</option><option>Farm</option><option>Retail</option><option>Restaurant</option></select></div><div class="field"><label>Driver / Vehicle</label><select><option>All</option></select></div><button class="btn primary" id="applyReport">Apply Filters</button></div><div class="empty-report"><i data-lucide="chart-no-axes-combined"></i><b>Select a report above</b><small>Report calculations and charts will be connected to Firestore records.</small></div></section>
+</section>
 
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    currentUser = null; currentProfile = null;
-    $("loginPage").style.display = "grid";
-    $("adminWorkspace").style.display = "none";
-    $("driverWorkspace").style.display = "none";
-    return;
-  }
-  try {
-    const snap = await getDoc(doc(db, COLLECTION.users, user.uid));
-    if (!snap.exists()) throw new Error("User profile not found.");
-    const p = snap.data();
-    const role = profileRole(p);
-    if (!profileActive(p) || !["admin", "driver"].includes(role)) throw new Error("Account inactive or role not permitted.");
-    currentUser = user; currentProfile = p;
-    showRole(role);
-  } catch (error) {
-    console.error("SESSION ERROR", error);
-    await signOut(auth);
-  }
-});
+<!-- BULK UPLOAD -->
+<section class="page" id="page-bulk-upload">
+ <div class="page-head"><div><div class="eyebrow">DATA MANAGEMENT</div><h1>Bulk Upload</h1><p>Import master records using Excel or CSV templates.</p></div><span class="page-badge"><i data-lucide="file-spreadsheet"></i> Bulk Import</span></div>
+ <div class="upload-grid">
+  <div class="card upload-card"><span class="upload-icon green"><i data-lucide="contact-round"></i></span><h2>Upload Drivers</h2><p>Driver ID, name, mobile, email, department and status.</p><label class="file-btn">Choose Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" data-file="driverFile"></label><small id="driverFile">No file selected</small><button class="template-btn" data-template="drivers">Download template</button></div>
+  <div class="card upload-card"><span class="upload-icon blue"><i data-lucide="car-front"></i></span><h2>Upload Vehicles</h2><p>Vehicle number, type, initial KM, fuel type and status.</p><label class="file-btn">Choose Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" data-file="vehicleFile"></label><small id="vehicleFile">No file selected</small><button class="template-btn" data-template="vehicles">Download template</button></div>
+  <div class="card upload-card"><span class="upload-icon purple"><i data-lucide="users"></i></span><h2>Upload Employees</h2><p>Employee ID, name, department, designation and status.</p><label class="file-btn">Choose Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" data-file="employeeFile"></label><small id="employeeFile">No file selected</small><button class="template-btn" data-template="employees">Download template</button></div>
+ </div>
+ <section class="card import-steps"><div class="card-title"><h2><i data-lucide="list-checks"></i> Bulk Upload Process</h2></div><div class="steps"><div><b>01</b><strong>Download template</strong><small>Use the correct column format.</small></div><div><b>02</b><strong>Fill records</strong><small>Complete mandatory fields and unique IDs.</small></div><div><b>03</b><strong>Validate file</strong><small>Check duplicates and missing values.</small></div><div><b>04</b><strong>Import records</strong><small>Confirm before writing to Firestore.</small></div></div><p class="warning"><i data-lucide="shield-alert"></i> This frontend preview only selects files. Actual validation and import will be added during Firebase integration.</p></section>
+</section>
 
-async function logout() { adminInitialised = false; driverInitialised = false; await signOut(auth); }
-window.mafarmLogout = logout;
-$("logoutBtn")?.addEventListener("click", logout);
+<section class="page" id="page-settings"><div class="page-head"><div><div class="eyebrow">CONFIGURATION</div><h1>Settings</h1><p>Manage departments, roles and application preferences.</p></div></div><div class="card form-card"><div class="card-title"><h2><i data-lucide="settings"></i> System Settings</h2></div><div class="form-grid"><div class="field"><label>Company Name</label><input value="Manappuram Agro Farms Limited"></div><div class="field"><label>Default KM Unit</label><select><option>Kilometres (KM)</option></select></div><div class="field"><label>Trip ID Prefix</label><input value="TRP"></div><div class="field"><label>Default Time Format</label><select><option>12 Hour</option><option>24 Hour</option></select></div></div><p class="hint">User roles and department permissions must be enforced in Firebase Security Rules, not only in this interface.</p></div></section>
+<footer>© MAFARM · Vehicle Trip Management System <span>Admin Interface Preview</span></footer>
+</div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
 
-/* ---------------- SHARED SELECTS ---------------- */
-function fillSelect(id, records, valueFn, labelFn, firstLabel = "Select") {
-  const select = $(id);
-  if (!select || select.tagName !== "SELECT") return;
-  const old = select.value;
-  select.innerHTML = "";
-  const first = document.createElement("option");
-  first.value = ""; first.textContent = firstLabel;
-  select.appendChild(first);
-  records.forEach(record => {
-    const option = document.createElement("option");
-    option.value = String(valueFn(record) ?? "");
-    option.textContent = String(labelFn(record) ?? "");
-    if (record._km !== undefined) option.dataset.km = String(record._km);
-    select.appendChild(option);
-  });
-  if ([...select.options].some(o => o.value === old)) select.value = old;
-}
-function activeVehiclesForAdmin() { return vehicleData.filter(activeRecord); }
-function activeEmployees() { return employeeData.filter(activeRecord); }
-function populateCommonSelects() {
-  const vehicles = activeVehiclesForAdmin().map(v => ({...v, _km: vehicleCurrentKm(v)}));
-  const employees = activeEmployees();
-  fillSelect("adminVehicle", vehicles, v => v.id, v => `${vehicleNumber(v)} — ${vehicleCurrentKm(v).toLocaleString("en-IN")} KM`);
-  fillSelect("adminDriverSelect", driverData, d => d.id, d => d.name || d.id, "Select driver");
-  fillSelect("adminEmployeeSelect", employees, e => e.id, e => `${val(e,["name","employeeName","Name"],e.id)} (${val(e,["employeeId","Employee ID"],e.id)})`, "Select employee");
-  fillSelect("vehicleAssignedDriver", driverData, d => d.id, d => d.name || d.id, "No Driver Assigned");
-  fillSelect("fuelVehicleAdmin", vehicles, v => v.id, v => vehicleNumber(v));
-  fillSelect("fuelDriverAdmin", driverData, d => d.id, d => d.name || d.id, "Select driver");
-}
+</div><div id="driverWorkspace" class="role-workspace" style="display:none"><main id="appPage" class="app hidden">
+    <header class="topbar">
+      <div class="brand-inline">🌿 <strong>MAFARM</strong><span>Vehicle Trip Management</span></div>
+      <div class="user-area"><span id="loggedUser">Driver</span><button id="logoutBtn" class="logout">Logout ↗</button></div>
+    </header>
+    <div class="app-body">
+      <aside class="sidebar">
+        <button class="nav active" data-view="tripView">🚗 <span>Trip Entry</span></button>
+        <button class="nav" data-view="fuelView">⛽ <span>Fuel Entry</span></button>
+        <div class="side-note">Driver workspace</div>
+      </aside>
 
-/* ---------------- ADMIN WORKSPACE ---------------- */
-function initAdminUI() {
-  if (adminInitialised) { refreshAdminData(); return; }
-  adminInitialised = true;
+      <section class="content">
+        <div class="welcome-row">
+          <div><p class="eyebrow">DRIVER WORKSPACE</p><h1 id="welcomeTitle">Trip Entry</h1><p class="muted">Enter trip details before starting your journey.</p></div>
+          <div class="status-pill"><i></i> Ready to start</div>
+        </div>
 
-  function go(page) {
-    document.querySelectorAll("#adminWorkspace .page").forEach(p => p.classList.remove("active"));
-    $("page-" + page)?.classList.add("active");
-    document.querySelectorAll("#adminWorkspace .nav-link").forEach(b => b.classList.toggle("active", b.dataset.page === page));
-    if (window.innerWidth < 760) $("sidebar")?.classList.remove("open");
-    window.scrollTo({top:0, behavior:"smooth"});
-  }
-  document.querySelectorAll("#adminWorkspace [data-page]").forEach(b => b.addEventListener("click", () => go(b.dataset.page)));
-  document.querySelectorAll("#adminWorkspace [data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
-  $("menuBtn")?.addEventListener("click", () => $("sidebar")?.classList.toggle("open"));
-  if ($("today")) $("today").textContent = new Intl.DateTimeFormat("en-IN", {day:"2-digit",month:"short",year:"numeric"}).format(new Date());
-  document.querySelectorAll('#adminWorkspace input[type="date"]').forEach(el => { if (!el.value) el.value = todayISO(); });
+        <section id="tripView" class="view">
+          <form id="tripForm" class="panel">
+            <div class="panel-heading"><div><h2>Start a new trip</h2><p class="muted">Driver information is taken from your login.</p></div><span class="step-tag">TRIP DETAILS</span></div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Driver</label>
+                <input id="driverName" value="Demo Driver" readonly />
+                <small>Automatically populated from registered user profile</small>
+              </div>
+              <div class="field">
+                <label for="driverFrom">From Location <b>*</b></label>
+                <input id="driverFrom" placeholder="Enter starting location" required />
+              </div>
+              <div class="field">
+                <label for="vehicle">Select Vehicle <b>*</b></label>
+                <select id="vehicle" required>
+                  <option value="">Select vehicle</option>
+                  <option value="KL 07 AB 4581" data-km="56320">KL 07 AB 4581</option>
+                  <option value="KL 08 CD 2190" data-km="42850">KL 08 CD 2190</option>
+                  <option value="KL 45 M 7712" data-km="71240">KL 45 M 7712</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="openingKm">Opening KM</label>
+                <input id="openingKm" type="number" placeholder="Auto-filled after vehicle selection" readonly />
+                <small>Fetched from the vehicle's latest closing KM (demo values)</small>
+              </div>
+              <div class="field">
+                <label for="department">Department <b>*</b></label>
+                <select id="department" required>
+                  <option value="">Select department</option>
+                  <option>Retail</option><option>Restaurant</option><option>Farm</option>
+                  <option>VAP</option><option>Head Office</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="requestedEmployee">Requested Employee <b>*</b></label>
+                <select id="requestedEmployee" required>
+                  <option value="">Select employee</option>
+                  <option>Anil Kumar - RET001</option>
+                  <option>Vishnu K S - OPS014</option>
+                  <option>Arun P - FARM008</option>
+                  <option value="manual">Enter manually</option>
+                </select>
+              </div>
+              <div class="field hidden" id="manualEmployeeWrap">
+                <label for="manualEmployee">Employee name</label>
+                <input id="manualEmployee" placeholder="Enter requested employee name" />
+              </div>
+              <div class="field">
+                <label for="tripDate">Trip Date</label>
+                <input id="tripDate" type="date" required />
+              </div>
+              <div class="field">
+                <label for="startTime">Start Time</label>
+                <input id="startTime" type="time" required />
+              </div>
+              <div class="field full-width">
+                <label for="purpose">Trip Purpose <b>*</b></label>
+                <input id="purpose" placeholder="e.g. Material delivery / Official visit" required />
+              </div>
+            </div>
 
-  // Admin trip entry
-  $("adminVehicle")?.addEventListener("change", e => {
-    const option = e.target.selectedOptions[0];
-    if ($("adminOpeningKm")) $("adminOpeningKm").value = option?.dataset.km || "";
-    calculateAdminDistance();
-  });
-  $("adminClosingKm")?.addEventListener("input", calculateAdminDistance);
-  $("addAdminDestination")?.addEventListener("click", () => addAdminDestinationRow());
-  $("adminDestinations")?.addEventListener("click", e => {
-    if (e.target.classList.contains("remove-dest")) e.target.closest(".destination-line")?.remove();
-    renumberAdminDestinations();
-  });
-  $("adminTripForm")?.addEventListener("submit", saveAdminTrip);
+            <div class="destination-head">
+              <div><h3>Trip Destinations <b>*</b></h3><p class="muted">Add one or more destinations in travel order.</p></div>
+              <button type="button" id="addDestination" class="secondary">＋ Add destination</button>
+            </div>
+            <div id="destinationList" class="destination-list">
+              <div class="destination-row"><span class="destination-number">1</span><input aria-label="Destination 1" placeholder="Enter first destination" required /><button type="button" class="remove-destination" title="Remove destination">×</button></div>
+            </div>
+            <div class="form-actions">
+              <button type="reset" class="secondary">Clear form</button>
+              <button type="submit" class="primary">▶ Start Trip</button>
+            </div>
+          </form>
 
-  // Vehicle master and bulk upload
-  $("vehicleMasterForm")?.addEventListener("submit", saveVehicle);
-  $("downloadVehicleTemplate")?.addEventListener("click", downloadVehicleTemplate);
-  $("previewVehicleUpload")?.addEventListener("click", previewVehicleFile);
-  $("importVehiclesBtn")?.addEventListener("click", importVehicleFile);
-  $("vehicleSearch")?.addEventListener("input", filterVehicleRows);
-  $("vehicleStatusFilter")?.addEventListener("change", filterVehicleRows);
-  $("refreshVehiclesBtn")?.addEventListener("click", async () => { await refreshAdminData(); toast("Vehicle list refreshed."); });
+          <section id="activeTrip" class="panel hidden">
+            <div class="active-heading"><div><span class="live-dot"></span><strong>Trip in progress</strong></div><span id="tripNumber" class="step-tag">TRIP ACTIVE</span></div>
+            <div id="activeSummary" class="summary-grid"></div>
+            <div class="destination-head">
+              <div><h3>Additional Destinations</h3><p class="muted">Add any places visited after starting the trip, before closing it.</p></div>
+              <button type="button" id="addClosingDestination" class="secondary">＋ Add destination</button>
+            </div>
+            <div id="closingDestinationList" class="destination-list"></div>
+            <h3>End Trip</h3>
+            <form id="endTripForm" class="form-grid">
+              <div class="field"><label for="closingKm">Closing KM <b>*</b></label><input id="closingKm" type="number" min="0" required placeholder="Enter closing kilometre" /></div>
+              <div class="field"><label for="endTime">End Time <b>*</b></label><input id="endTime" type="time" required /></div>
+              <div class="field full-width"><label for="remarks">Remarks</label><textarea id="remarks" rows="3" placeholder="Enter trip completion remarks"></textarea></div>
+              <div class="form-actions full-width"><button type="submit" class="primary">✓ End Trip</button></div>
+            </form>
+          </section>
+        </section>
 
-  // Employee form uses explicit IDs added in index.html
-  $("employeeForm")?.addEventListener("submit", saveEmployee);
-  $("fuelEntryForm")?.addEventListener("submit", saveAdminFuel);
-  $("managedUserForm")?.addEventListener("submit", saveManagedUser);
-  $("refreshUsersBtn")?.addEventListener("click", loadUsers);
-
-  document.querySelectorAll("[data-report]").forEach(b => b.addEventListener("click", () => {
-    currentReportType = b.dataset.report;
-    go("reports");
-    if ($("reportTitle")) $("reportTitle").textContent = ({driver:"Driver-wise Report",vehicle:"Vehicle-wise Report",fuel:"Fuel Report",efficiency:"Driver-wise Efficiency"})[currentReportType] || "Report";
-    renderReport();
-  }));
-  $("applyReport")?.addEventListener("click", renderReport);
-  $("dashSearch")?.addEventListener("input", filterDashboardTrips);
-  $("dashStatus")?.addEventListener("change", filterDashboardTrips);
-  $("tripSearch")?.addEventListener("input", filterTripRegister);
-
-  if (window.lucide) window.lucide.createIcons();
-  refreshAdminData();
-}
-
-function calculateAdminDistance() {
-  const opening = Number($("adminOpeningKm")?.value);
-  const closing = Number($("adminClosingKm")?.value);
-  if ($("adminDistance")) $("adminDistance").value = closing >= opening && opening >= 0 ? (closing - opening) : "";
-}
-function addAdminDestinationRow() {
-  const box = $("adminDestinations"); if (!box) return;
-  const row = document.createElement("div"); row.className = "destination-line";
-  row.innerHTML = `<span></span><input placeholder="Additional destination"><button type="button" class="remove-dest">×</button>`;
-  box.appendChild(row); renumberAdminDestinations();
-}
-function renumberAdminDestinations() {
-  $("adminDestinations")?.querySelectorAll(".destination-line span").forEach((s,i) => s.textContent = String(i+1));
-}
-async function saveAdminTrip(e) {
-  e.preventDefault();
-  if (!isAdmin()) return;
-  const form = e.currentTarget;
-  const vehicleId = $("adminVehicle")?.value;
-  const driverUid = $("adminDriverSelect")?.value;
-  const vehicle = vehicleData.find(v => v.id === vehicleId);
-  const driver = driverData.find(d => d.id === driverUid);
-  const opening = Number($("adminOpeningKm")?.value);
-  const closing = Number($("adminClosingKm")?.value);
-  if (!vehicle || !driver) return toast("Select a valid vehicle and driver.", true);
-  if (!Number.isFinite(closing) || closing < opening) return toast("Closing KM cannot be less than Opening KM.", true);
-  const get = id => form.querySelector(`#${id}`)?.value?.trim() || "";
-  const inputs = [...form.querySelectorAll("input")];
-  const dateInput = form.querySelector('input[type="date"]');
-  const timeInputs = form.querySelectorAll('input[type="time"]');
-  const textareas = form.querySelectorAll("textarea");
-  const from = $("adminFrom")?.value || "";
-  const to = $("adminTo")?.value || "";
-  const purpose = $("adminPurpose")?.value || "";
-  const destinations = [...($("adminDestinations")?.querySelectorAll("input") || [])].map(x=>x.value.trim()).filter(Boolean);
-  try {
-    await addDoc(collection(db, COLLECTION.trips), {
-      driverUid, driverName: driver.name, vehicleId, vehicleNo: vehicleNumber(vehicle),
-      department: $("adminDepartmentSelect")?.value || "", requestedEmployee: $("adminEmployeeSelect")?.value || "",
-      tripDate: dateInput?.value || todayISO(), startTime: timeInputs[0]?.value || "", endTime: timeInputs[1]?.value || "",
-      from, to, purpose, destinations, openingKm: opening, closingKm: closing, distanceKm: closing-opening,
-      remarks: textareas[0]?.value || "", status:"completed", createdBy:currentUser.uid,
-      createdAt:serverTimestamp(), completedAt:serverTimestamp()
-    });
-    await updateDoc(doc(db, COLLECTION.vehicles, vehicle.id), { currentKm: closing, lastTripClosingKm: closing, lastTripDate: dateInput?.value || todayISO(), updatedAt:serverTimestamp(), updatedBy:currentUser.uid });
-    form.reset();
-    if ($("adminOpeningKm")) $("adminOpeningKm").value = "";
-    if ($("adminDistance")) $("adminDistance").value = "";
-    await refreshAdminData();
-    toast("Completed trip saved and vehicle KM updated.");
-  } catch (error) {
-    console.error("ADMIN TRIP SAVE ERROR", error);
-    toast(error.message || "Trip could not be saved. Check Firestore rules.", true);
-  }
-}
-
-/* ---------------- VEHICLE MASTER ---------------- */
-async function saveVehicle(e) {
-  e.preventDefault();
-  if (!isAdmin()) return;
-  const form = e.currentTarget;
-  const button = $("saveVehicleBtn") || form.querySelector('button[type="submit"]');
-  setBusy(button, true, "Save Vehicle");
-  try {
-    const vehicleNo = $("vehicleNumber")?.value.trim().toUpperCase();
-    const vehicleType = $("vehicleType")?.value.trim();
-    const initialKm = Number($("vehicleInitialKm")?.value);
-    const driverUid = $("vehicleAssignedDriver")?.value || "";
-    const driver = driverData.find(d => d.id === driverUid);
-    if (!vehicleNo || !vehicleType) throw new Error("Vehicle number and type are required.");
-    if (!Number.isFinite(initialKm) || initialKm < 0) throw new Error("Enter a valid initial KM reading.");
-    if (vehicleData.some(v => normaliseVehicle(vehicleNumber(v)) === normaliseVehicle(vehicleNo))) throw new Error("This vehicle number is already registered.");
-    const status = $("vehicleStatus")?.value || "Active";
-    await addDoc(collection(db, COLLECTION.vehicles), {
-      vehicleNo, vehicleType, fuelType: $("vehicleFuelType")?.value || "",
-      registrationDate: $("vehicleRegistrationDate")?.value || "",
-      department: $("vehicleDepartment")?.value || "Common Pool",
-      initialKm, currentKm: initialKm,
-      assignedDriverUid: driverUid, assignedDriverName: driver?.name || "",
-      status, active: status.toLowerCase() === "active",
-      remarks: $("vehicleRemarks")?.value.trim() || "",
-      createdAt:serverTimestamp(), createdBy:currentUser.uid
-    });
-    form.reset();
-    message("vehicleMessage", "Vehicle registered successfully.");
-    await refreshAdminData();
-    toast("Vehicle saved successfully.");
-  } catch (error) {
-    console.error("VEHICLE SAVE ERROR", error);
-    message("vehicleMessage", error.message || "Vehicle registration failed.", true);
-  } finally { setBusy(button, false, "Save Vehicle"); }
-}
-function downloadVehicleTemplate(e) {
-  e?.preventDefault();
-  const rows = [
-    ["Vehicle No","Vehicle Type","Initial KM","Fuel Type","Registration Date","Department","Status","Driver UID","Remarks"],
-    ["KL-08-AB-1234","Car",12500,"Diesel","2026-01-15","Operations","Active","","Example row"]
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{wch:20},{wch:18},{wch:14},{wch:14},{wch:18},{wch:18},{wch:12},{wch:34},{wch:28}];
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Vehicles");
-  XLSX.writeFile(wb, "MAFARM_Vehicle_Master_Template.xlsx");
-}
-async function previewVehicleFile() {
-  try {
-    const file = $("vehicleBulkFile")?.files?.[0];
-    if (!file) throw new Error("Choose an Excel or CSV file first.");
-    const ext = file.name.split(".").pop().toLowerCase();
-    if (!["xlsx","xls","csv"].includes(ext)) throw new Error("Only XLSX, XLS and CSV files are supported.");
-    const buffer = await file.arrayBuffer();
-    const wb = XLSX.read(buffer, {type:"array"});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, {defval:""});
-    if (!raw.length) throw new Error("No vehicle rows found in the first worksheet.");
-    vehicleImportRows = raw.map(row => {
-      const find = (...names) => {
-        const key = Object.keys(row).find(k => names.some(n => k.trim().toLowerCase() === n.toLowerCase()));
-        return key === undefined ? "" : row[key];
-      };
-      return {
-        vehicleNo:String(find("Vehicle No","Vehicle Number","vehicleNo","vehicleNumber")).trim().toUpperCase(),
-        vehicleType:String(find("Vehicle Type","Type","vehicleType")).trim(),
-        initialKm:Number(find("Initial KM","InitialKm","KM","Odometer")),
-        fuelType:String(find("Fuel Type","fuelType")).trim(),
-        registrationDate:String(find("Registration Date","registrationDate")).trim(),
-        department:String(find("Department","Assigned Department","department")).trim() || "Common Pool",
-        status:String(find("Status","Vehicle Status","status")).trim() || "Active",
-        driverUid:String(find("Driver UID","Driver ID","driverUid")).trim(),
-        remarks:String(find("Remarks","remarks")).trim()
-      };
-    });
-    renderVehicleImportPreview();
-  } catch (error) {
-    console.error("VEHICLE FILE PREVIEW ERROR", error);
-    message("vehicleBulkMessage", error.message || "Unable to read file.", true);
-    if ($("importVehiclesBtn")) $("importVehiclesBtn").disabled = true;
-  }
-}
-function validateVehicleImportRows() {
-  const seen = new Set();
-  return vehicleImportRows.map((row,index) => {
-    const key = normaliseVehicle(row.vehicleNo);
-    let error = "";
-    if (!key) error = "Vehicle number missing";
-    else if (seen.has(key)) error = "Duplicate in uploaded file";
-    else if (vehicleData.some(v => normaliseVehicle(vehicleNumber(v)) === key)) error = "Already registered";
-    else if (!row.vehicleType) error = "Vehicle type missing";
-    else if (!Number.isFinite(row.initialKm) || row.initialKm < 0) error = "Invalid initial KM";
-    else if (row.driverUid && !driverData.some(d => d.id === row.driverUid)) error = "Driver UID not found";
-    if (key) seen.add(key);
-    return {...row, rowNumber:index+2, error};
-  });
-}
-function renderVehicleImportPreview() {
-  const box = $("vehicleUploadPreview"); if (!box) return;
-  const rows = validateVehicleImportRows();
-  const valid = rows.filter(r => !r.error).length;
-  box.innerHTML = `<div class="import-summary"><b>${rows.length}</b> rows · <b>${valid}</b> valid · <b>${rows.length-valid}</b> need correction</div>
-    <div class="table-scroll"><table><thead><tr><th>Excel Row</th><th>Vehicle No</th><th>Type</th><th>Initial KM</th><th>Department</th><th>Driver UID</th><th>Validation</th></tr></thead><tbody>
-    ${rows.map(r=>`<tr><td>${r.rowNumber}</td><td>${esc(r.vehicleNo)}</td><td>${esc(r.vehicleType)}</td><td>${esc(r.initialKm)}</td><td>${esc(r.department)}</td><td>${esc(r.driverUid || "—")}</td><td class="${r.error?"validation-error":"validation-ok"}">${esc(r.error || "Valid")}</td></tr>`).join("")}</tbody></table></div>`;
-  if ($("importVehiclesBtn")) $("importVehiclesBtn").disabled = valid === 0;
-  message("vehicleBulkMessage", `${valid} valid vehicle records ready for import.`, valid === 0);
-}
-async function importVehicleFile() {
-  if (!isAdmin()) return;
-  const button = $("importVehiclesBtn");
-  const rows = validateVehicleImportRows();
-  const validRows = rows.filter(r => !r.error);
-  if (!validRows.length) return message("vehicleBulkMessage", "No valid records to import.", true);
-  button.disabled = true; button.textContent = "Importing…";
-  let imported = 0; const errors = [];
-  try {
-    // Firestore writes are performed sequentially to identify any failed row clearly.
-    for (const row of validRows) {
-      try {
-        const driver = driverData.find(d => d.id === row.driverUid);
-        const status = row.status || "Active";
-        await addDoc(collection(db, COLLECTION.vehicles), {
-          vehicleNo:row.vehicleNo, vehicleType:row.vehicleType,
-          initialKm:row.initialKm, currentKm:row.initialKm,
-          fuelType:row.fuelType, registrationDate:row.registrationDate,
-          department:row.department, status,
-          active:status.toLowerCase() === "active",
-          assignedDriverUid:row.driverUid || "", assignedDriverName:driver?.name || "",
-          remarks:row.remarks, createdAt:serverTimestamp(), createdBy:currentUser.uid
-        });
-        imported++;
-      } catch (error) {
-        console.error("Vehicle import row failed", row, error);
-        errors.push(`${row.vehicleNo}: ${error.message}`);
-      }
-    }
-    await refreshAdminData();
-    message("vehicleBulkMessage", `Import completed: ${imported} saved; ${validRows.length-imported} failed.`, imported === 0);
-    if (imported) {
-      vehicleImportRows = [];
-      if ($("vehicleUploadPreview")) $("vehicleUploadPreview").innerHTML = "";
-      if ($("vehicleBulkFile")) $("vehicleBulkFile").value = "";
-    }
-    if (errors.length) console.error("Bulk import failures", errors);
-    toast(`Vehicle import completed. ${imported} records saved.`);
-  } finally {
-    button.disabled = true; button.textContent = "Import Vehicles";
-  }
-}
-function vehicleStatusLabel(v) {
-  const raw = String(val(v, ["status", "Status"], "")).trim();
-  if (/maintenance|repair|service/i.test(raw)) return "Under Maintenance";
-  if (/inactive/i.test(raw)) return "Inactive";
-  return activeRecord(v) ? "Active" : "Inactive";
-}
-function renderVehicleRegister() {
-  const tbody = $("vehicleTableBody"); if (!tbody) return;
-  const active = vehicleData.filter(v => vehicleStatusLabel(v) === "Active").length;
-  const maintenance = vehicleData.filter(v => vehicleStatusLabel(v) === "Under Maintenance").length;
-  const inactive = vehicleData.filter(v => vehicleStatusLabel(v) === "Inactive").length;
-  if ($("vehicleTotal")) $("vehicleTotal").textContent = vehicleData.length;
-  if ($("vehicleActive")) $("vehicleActive").textContent = active;
-  if ($("vehicleInactive")) $("vehicleInactive").textContent = inactive + maintenance;
-  tbody.innerHTML = vehicleData.length ? [...vehicleData].sort((a,b)=>vehicleNumber(a).localeCompare(vehicleNumber(b))).map(v => {
-    const status = vehicleStatusLabel(v);
-    return `<tr data-status="${esc(status)}">
-      <td><b>${esc(vehicleNumber(v))}</b></td><td>${esc(val(v,["vehicleType","type"],"—"))}</td>
-      <td>${Number(val(v,["initialKm","InitialKM"],0)).toLocaleString("en-IN")}</td>
-      <td><b>${vehicleCurrentKm(v).toLocaleString("en-IN")}</b></td>
-      <td>${esc(val(v,["assignedDriverName"],"Unassigned") || "Unassigned")}</td>
-      <td>${esc(val(v,["department","Department"],"Common Pool"))}</td>
-      <td><span class="pill ${status==="Active"?"completed":"progress"}">${esc(status)}</span></td>
-      <td><div class="vehicle-actions"><button type="button" class="vehicle-edit-btn" data-vehicle-edit="${esc(v.id)}">Edit</button><button type="button" class="vehicle-delete-btn" data-vehicle-delete="${esc(v.id)}">Delete</button></div></td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="8" class="empty-cell">No vehicles registered yet. Add a vehicle or import an Excel file.</td></tr>`;
-  filterVehicleRows();
-}
-function filterVehicleRows() {
-  const q = ($("vehicleSearch")?.value || "").toLowerCase();
-  const status = $("vehicleStatusFilter")?.value || "";
-  document.querySelectorAll("#vehicleTableBody tr").forEach(row => {
-    row.hidden = !row.textContent.toLowerCase().includes(q) || (status && row.dataset.status !== status);
-  });
-}
-
-/* ---------------- ADMIN DATA / TABLES ---------------- */
-async function refreshAdminData() {
-  if (!currentUser || !isAdmin()) return;
-  const names = [COLLECTION.trips,COLLECTION.vehicles,COLLECTION.employees,COLLECTION.users,COLLECTION.fuel];
-  const results = {};
-  for (const name of names) {
-    try { results[name] = await readCollection(name); console.log("SUCCESS:",name,results[name].length,"records"); }
-    catch (error) { results[name] = []; console.error("FAILED COLLECTION:",name,error.code,error.message); }
-  }
-  tripData = results.Trips; vehicleData = results.Vehicles; employeeData = results.Employees; userData = results.User; fuelData = results.Fuel;
-  driverData = userData.filter(u => String(val(u,["Role","role"],"")).toLowerCase() === "driver" && activeRecord(u)).map(u => ({...u,name:val(u,["Name","name","employeeName"],"Driver")}));
-  populateCommonSelects();
-  renderVehicleRegister(); renderEmployeeTable(); renderDriverTable(); renderUserTable(); renderTripTables(); renderFuelTable(); updateDashboardKpis();
-}
-
-async function saveManagedUser(event) {
-  event.preventDefault();
-  if (!currentUser || !isAdmin()) return message("managedUserMessage", "Only an administrator can add user profiles.", true);
-  const uid = $("newUserUid")?.value.trim();
-  const userId = $("newUserId")?.value.trim();
-  const name = $("newUserName")?.value.trim();
-  const role = $("newUserRole")?.value;
-  const email = $("newUserEmail")?.value.trim().toLowerCase();
-  const department = $("newUserDepartment")?.value || "";
-  if (!uid || !userId || !name || !role || !email) return message("managedUserMessage", "Please complete all required fields.", true);
-  const button = $("createManagedUserBtn");
-  setBusy(button, true, "Save Employee Profile");
-  try {
-    const profileRef = doc(db, COLLECTION.users, uid);
-    const existing = await getDoc(profileRef);
-    if (existing.exists()) throw new Error("A User profile already exists for this Authentication UID.");
-    const profile = {
-      "Name": name,
-      "User ID": userId,
-      "Mail ID": email,
-      "Login Alias": loginAliasFromUserId(userId),
-      "Role": role,
-      "Department": department,
-      "Active": true,
-      "Mobile": $("newUserMobile")?.value.trim() || "",
-      "Driver ID": $("newUserDriverId")?.value.trim() || "",
-      "Assigned Vehicle": $("newUserVehicle")?.value.trim().toUpperCase() || "",
-      "Auth UID": uid,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser.uid,
-      updatedAt: serverTimestamp()
-    };
-    await setDoc(profileRef, profile);
-    message("managedUserMessage", "Employee profile saved successfully. The employee can now sign in with the Firebase Authentication email and password.");
-    $("managedUserForm").reset();
-    await refreshAdminData();
-  } catch (error) {
-    console.error("User profile save failed:", error);
-    message("managedUserMessage", error.message || "Could not save employee profile. Check Firestore rules and the Authentication UID.", true);
-  } finally {
-    setBusy(button, false, "Save Employee Profile");
-  }
-}
-
-async function loadUsers() { await refreshAdminData(); toast("User list refreshed."); }
-function renderUserTable() {
-  const body = $("managedUsersBody"); if (!body) return;
-  body.innerHTML = userData.length ? userData.map(u=>`<tr><td>${esc(val(u,["User ID","userId"],""))}</td><td>${esc(val(u,["Name","name","employeeName"],""))}</td><td>${esc(val(u,["Mail ID","email","mailId"],""))}</td><td>${esc(val(u,["Role","role"],""))}</td><td>${activeRecord(u)?"Active":"Inactive"}</td><td><button type="button" class="row-delete-btn" data-delete-kind="driver" data-delete-id="${esc(u.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="6">No user records found.</td></tr>`;
-}
-function renderEmployeeTable() {
-  const body = $("employeeTableBody"); if (!body) return;
-  body.innerHTML = employeeData.length ? employeeData.map(e=>`<tr><td>${esc(val(e,["employeeId","Employee ID"],e.id))}</td><td>${esc(val(e,["name","Name","employeeName"],""))}</td><td>${esc(val(e,["department","Department"],""))}</td><td>${activeRecord(e)?"Active":"Inactive"}</td><td><button type="button" class="row-delete-btn" data-delete-kind="employee" data-delete-id="${esc(e.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No employee records found.</td></tr>`;
-}
-function renderDriverTable() {
-  const body = $("driverTableBody"); if (!body) return;
-  body.innerHTML = driverData.length ? driverData.map(d=>`<tr><td>${esc(val(d,["Driver ID","driverId","User ID","userId"],d.id))}</td><td>${esc(d.name)}</td><td>${esc(val(d,["Mobile","mobile","mobileNumber"],""))}</td><td>Active</td><td><button type="button" class="row-delete-btn" data-delete-kind="driver" data-delete-id="${esc(d.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No driver profiles found.</td></tr>`;
-}
-
-function tripDestinationText(trip) {
-  const parts = [];
-  const add = value => {
-    if (Array.isArray(value)) value.forEach(add);
-    else if (value && typeof value === "object") {
-      const textValue = value.name || value.place || value.location || value.destination || value.address;
-      if (textValue) parts.push(String(textValue).trim());
-    } else if (value !== undefined && value !== null && String(value).trim()) {
-      parts.push(String(value).trim());
-    }
-  };
-  // Driver trip start destinations and destinations added at completion
-  // are stored in different fields in this application.
-  add(trip.destinations);
-  add(trip.additionalDestinations);
-  add(trip.destination);
-  add(trip.to);
-  return [...new Set(parts.filter(Boolean))].join(", ");
-}
-
-function requestedEmployeeDisplay(value) {
-  const id = String(value ?? "");
-  const matched = employeeData.find(e =>
-    e.id === id ||
-    String(val(e, ["employeeId", "Employee ID", "User ID", "userId"], "")) === id
-  );
-  return matched ? String(val(matched, ["name", "Name", "employeeName"], id)) : id;
-}
-
-function exportTripRegisterExcel() {
-  if (!isAdmin()) return toast("Only Admin can export the trip register.", true);
-  const rows = [...tripData]
-    .sort((a,b) => String(a.tripDate || "").localeCompare(String(b.tripDate || "")))
-    .map(t => ({
-      "Trip ID": t.id,
-      "Date": t.tripDate || "",
-      "Vehicle": t.vehicleNo || "",
-      "Driver": t.driverName || "",
-      "Department": t.department || "",
-      "From": t.from || "",
-      "Additional Places / Destination": tripDestinationText(t),
-      "Purpose": t.purpose || "",
-      "Requested Employee": (() => {
-        const requestedId = String(t.requestedEmployee || "");
-        const matched = employeeData.find(e =>
-          e.id === requestedId ||
-          String(val(e, ["employeeId", "Employee ID", "User ID", "userId"], "")) === requestedId
-        );
-        return matched
-          ? String(val(matched, ["name", "Name", "employeeName"], requestedId))
-          : requestedId;
-      })(),
-      "Start Time": t.startTime || "",
-      "End Time": t.endTime || "",
-      "Opening KM": t.openingKm ?? "",
-      "Closing KM": t.closingKm ?? "",
-      "Distance KM": t.distanceKm ?? "",
-      "Status": t.status || "",
-      "Remarks": t.remarks || ""
-    }));
-  if (!rows.length) return toast("No trip records available to export.", true);
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  worksheet["!cols"] = Object.keys(rows[0]).map(key => ({
-    wch: Math.max(14, Math.min(34, key.length + 5))
-  }));
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Trip Register");
-  XLSX.writeFile(workbook, `MAFARM_Trip_Register_${todayISO()}.xlsx`);
-  toast("Trip Register Excel downloaded.");
-}
-
-function renderTripTables() {
-  const sorted = [...tripData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-  const latest = $("latestTrips");
-  if (latest) latest.innerHTML = sorted.slice(0,12).map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.from||"")}</td><td>${esc(tripDestinationText(t))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td><span class="pill ${t.status==="completed"?"completed":"progress"}">${esc(t.status||"")}</span></td></tr>`).join("") || `<tr><td colspan="10">No trip records found.</td></tr>`;
-  const body = $("tripRegisterBody");
-  if (body) body.innerHTML = sorted.map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.department||"")}</td><td>${esc(t.from||"")}</td><td>${esc(tripDestinationText(t))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td>${esc(t.status||"")}</td><td><button type="button" class="row-delete-btn" data-delete-kind="trip" data-delete-id="${esc(t.id)}">Delete</button></td></tr>`).join("") || `<tr><td colspan="12">No trip records found.</td></tr>`;
-}
-function renderFuelTable() {
-  const sortedFuel = [...fuelData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-  const recentBody = $("fuelRecentBody");
-  if (recentBody) recentBody.innerHTML = sortedFuel.slice(0,8).map(f=>`<tr><td>${esc(f.fuelDate||f.date||"")}</td><td>${esc(f.vehicleNo||"")}</td><td>${esc(f.km??f.odometerKm??"")}</td><td>${esc(f.litres??"")}</td><td>${esc(f.amount??"")}</td></tr>`).join("") || `<tr><td colspan="5">No fuel entries found.</td></tr>`;
-  const body = $("fuelRegisterBody"); if (!body) return;
-  body.innerHTML = sortedFuel.map((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).map(f=>`<tr><td>${esc(f.fuelDate||f.date||"")}</td><td>${esc(f.vehicleNo||"")}</td><td>${esc(f.driverName||"")}</td><td>${esc(f.km??f.odometerKm??"")}</td><td>${esc(f.litres??"")}</td><td>${esc(f.amount??"")}</td><td>${esc(f.station||"")}</td><td>${esc(f.billNo||"")}</td></tr>`).join("") || `<tr><td colspan="8">No fuel records found.</td></tr>`;
-}
-function updateDashboardKpis() {
-  const today = todayISO();
-  const todayTrips = tripData.filter(t => String(t.tripDate || "").slice(0,10) === today);
-  const todayFuel = fuelData.filter(f => String(f.fuelDate || f.date || "").slice(0,10) === today);
-  const activeVehicles = vehicleData.filter(activeRecord);
-  const activeDrivers = driverData.filter(activeRecord);
-  const activeEmployees = employeeData.filter(activeRecord);
-  const maintenanceVehicles = vehicleData.filter(v => {
-    const status = String(val(v, ["status","Status","availability","Availability"], "")).toLowerCase();
-    return status.includes("maintenance") || status.includes("repair") || status.includes("service");
-  });
-
-  const kmToday = todayTrips.reduce((sum,t) => sum + Number(t.distanceKm || (Number(t.closingKm)-Number(t.openingKm)) || 0), 0);
-  const litresToday = todayFuel.reduce((sum,f) => sum + Number(f.litres || f.quantity || 0), 0);
-  const efficiency = litresToday > 0 ? kmToday / litresToday : 0;
-
-  const set = (id, value) => { const el = $(id); if (el) el.textContent = value; };
-  set("kpiTrips", todayTrips.length);
-  set("kpiKmToday", kmToday.toLocaleString("en-IN", {maximumFractionDigits:1}));
-  set("kpiFuelToday", litresToday.toFixed(2));
-  set("kpiEfficiency", efficiency.toFixed(2));
-  set("kpiActiveVehicles", activeVehicles.length);
-  set("kpiActiveDrivers", activeDrivers.length);
-
-  set("snapTripsProgress", tripData.filter(t => String(t.status || "").toLowerCase() === "active").length);
-  set("snapFuelToday", todayFuel.length);
-  set("snapEmployees", activeEmployees.length);
-  set("snapMaintenance", maintenanceVehicles.length);
-
-  const active = $("availabilityActive");
-  const maintenance = $("availabilityMaintenance");
-  const idle = $("availabilityIdle");
-  if (active) active.textContent = activeVehicles.length - maintenanceVehicles.length;
-  if (maintenance) maintenance.textContent = maintenanceVehicles.length;
-  if (idle) idle.textContent = vehicleData.filter(v => activeRecord(v) && !maintenanceVehicles.includes(v)).length;
-}
-
-function filterDashboardTrips() {
-  const q = ($("dashSearch")?.value||"").toLowerCase(); const status = ($("dashStatus")?.value||"").toLowerCase();
-  document.querySelectorAll("#latestTrips tr").forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(q)||(status&&!row.textContent.toLowerCase().includes(status));});
-}
-function filterTripRegister() {
-  const q = ($("tripSearch")?.value||"").toLowerCase();
-  document.querySelectorAll("#tripRegisterBody tr").forEach(row=>row.hidden=!row.textContent.toLowerCase().includes(q));
-}
-
-/* ---------------- EMPLOYEE MASTER ---------------- */
-async function saveEmployee(e) {
-  e.preventDefault(); if (!isAdmin()) return;
-  const form=e.currentTarget; const fields=form.querySelectorAll("input,select");
-  const employeeId=fields[0]?.value.trim(); const name=fields[1]?.value.trim(); const department=fields[2]?.value||"";
-  if (!employeeId||!name||!department) return toast("Enter Employee ID, name and department.",true);
-  if (employeeData.some(x=>String(val(x,["employeeId","Employee ID"],"")).toLowerCase()===employeeId.toLowerCase())) return toast("Employee ID already exists.",true);
-  try {
-    await addDoc(collection(db,COLLECTION.employees),{employeeId,name,department,designation:fields[3]?.value||"",mobile:fields[4]?.value||"",email:fields[5]?.value||"",active:(fields[6]?.value||"Active")==="Active",createdAt:serverTimestamp(),createdBy:currentUser.uid});
-    form.reset(); await refreshAdminData(); toast("Employee saved successfully.");
-  } catch(error) { console.error(error); toast(error.message||"Employee save failed.",true); }
-}
-
-/* ---------------- ADMIN FUEL ENTRY ---------------- */
-async function saveAdminFuel(e) {
-  e.preventDefault(); if (!isAdmin()) return;
-  const form=e.currentTarget; const selects=form.querySelectorAll("select"); const dates=form.querySelectorAll('input[type="date"]'); const numbers=form.querySelectorAll('input[type="number"]');
-  const vehicleId=selects[0]?.value||""; const driverUid=selects[1]?.value||"";
-  const vehicle=vehicleData.find(v=>v.id===vehicleId); const driver=driverData.find(d=>d.id===driverUid);
-  const date=dates[0]?.value||todayISO(); const km=Number(numbers[0]?.value); const litres=Number(numbers[1]?.value); const amount=Number(numbers[2]?.value);
-  if (!vehicle||!driver||!litres||litres<=0||!Number.isFinite(km)||km<0||amount<0) return toast("Complete all required fuel details.",true);
-  try {
-    await addDoc(collection(db,COLLECTION.fuel),{vehicleId,vehicleNo:vehicleNumber(vehicle),driverUid,driverName:driver.name,fuelDate:date,fuelTime:form.querySelector('input[type="time"]')?.value||"",km,litres,amount,rate:litres?amount/litres:0,station:form.querySelectorAll('input')[4]?.value||"",billNo:form.querySelectorAll('input')[5]?.value||"",remarks:form.querySelector("textarea")?.value||"",enteredBy:currentUser.uid,createdAt:serverTimestamp()});
-    form.reset(); await refreshAdminData(); toast("Fuel entry saved.");
-  } catch(error) { console.error(error); toast(error.message||"Fuel entry failed.",true); }
-}
-
-/* ---------------- REPORTS ---------------- */
-function renderReport() {
-  const box=document.querySelector(".report-result .empty-report"); if (!box) return;
-  const from=document.querySelector(".report-filters input[type=date]")?.value||"";
-  const to=document.querySelectorAll(".report-filters input[type=date]")[1]?.value||"";
-  let trips=tripData.filter(t=>(!from||t.tripDate>=from)&&(!to||t.tripDate<=to));
-  let title="Report Preview", rows=[];
-  if (currentReportType==="driver") { title="Driver-wise Report"; rows=trips.map(t=>({Driver:t.driverName,Vehicle:t.vehicleNo,Date:t.tripDate,KM:t.distanceKm||0,Status:t.status})); }
-  else if (currentReportType==="vehicle") { title="Vehicle-wise Report"; rows=trips.map(t=>({Vehicle:t.vehicleNo,Date:t.tripDate,Driver:t.driverName,OpeningKM:t.openingKm,ClosingKM:t.closingKm,Distance:t.distanceKm})); }
-  else if (currentReportType==="fuel") { title="Fuel Report"; rows=fuelData.filter(f=>(!from||(f.fuelDate||f.date)>=from)&&(!to||(f.fuelDate||f.date)<=to)).map(f=>({Date:f.fuelDate||f.date,Vehicle:f.vehicleNo,Driver:f.driverName,Litres:f.litres,Amount:f.amount,KM:f.km??f.odometerKm})); }
-  else if (currentReportType==="efficiency") { title="Driver-wise Efficiency"; rows=trips.map(t=>({Driver:t.driverName,Vehicle:t.vehicleNo,DistanceKM:t.distanceKm||0})); }
-  if ($("reportTitle")) $("reportTitle").textContent=title;
-  if (!currentReportType) { box.innerHTML="<i data-lucide=\"chart-no-axes-combined\"></i><b>Select a report above</b><small>Choose a report to view Firestore data.</small>"; return; }
-  box.innerHTML=rows.length?`<div class="table-scroll"><table><thead><tr>${Object.keys(rows[0]).map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc(v??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div><button type="button" class="btn light" id="exportReportBtn">Export Excel</button>`:`<b>No records found for this report.</b>`;
-  $("exportReportBtn")?.addEventListener("click",()=>{const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Report");XLSX.writeFile(wb,`${currentReportType}_report.xlsx`);});
-}
-
-/* ---------------- DRIVER WORKSPACE ---------------- */
-async function initDriverUI() {
-  if (driverInitialised) return;
-  driverInitialised = true;
-  const user=auth.currentUser;
-  if (!user) return;
-  try {
-    const profileSnap=await getDoc(doc(db,COLLECTION.users,user.uid));
-    if (!profileSnap.exists()) throw new Error("Driver profile not found.");
-    currentProfile=profileSnap.data(); currentUser=user;
-    if (!isDriver()||!profileActive(currentProfile)) throw new Error("Driver access is inactive or not permitted.");
-    const name=profileName();
-    if ($("driverName")) $("driverName").value=name;
-    if ($("fuelDriver")) $("fuelDriver").value=name;
-    if ($("loggedUser")) $("loggedUser").textContent=name;
-    $("appPage")?.classList.remove("hidden");
-    document.querySelectorAll('#driverWorkspace input[type="date"]').forEach(x=>{if(!x.value)x.value=todayISO();});
-    await loadDriverLists();
-    await loadActiveTrip();
-    bindDriverEvents();
-  } catch(error) { console.error("DRIVER INIT ERROR",error); alert(error.message); await signOut(auth); }
-}
-async function loadDriverLists() {
-  vehicleData=await readCollection(COLLECTION.vehicles);
-  employeeData=await readCollection(COLLECTION.employees);
-  // Drivers see assigned vehicles plus vehicles not assigned to another driver.
-  const allowed=vehicleData.filter(v=>activeRecord(v)&&(!val(v,["assignedDriverUid"],"")||v.assignedDriverUid===currentUser.uid));
-  fillSelect("vehicle",allowed,v=>v.id,v=>vehicleNumber(v));
-  fillSelect("fuelVehicle",allowed,v=>v.id,v=>vehicleNumber(v));
-  fillSelect("requestedEmployee",employeeData.filter(activeRecord),e=>e.id,e=>`${val(e,["name","Name","employeeName"],e.id)} (${val(e,["employeeId"],e.id)})`,"Select employee");
-}
-async function loadActiveTrip() {
-  const q=query(collection(db,COLLECTION.trips),where("driverUid","==",currentUser.uid),where("status","==","active"),limit(1));
-  const snap=await getDocs(q);
-  if (snap.empty) { activeTripId=null; activeTripData=null; $("activeTrip")?.classList.add("hidden"); $("tripForm")?.classList.remove("hidden"); return; }
-  const d=snap.docs[0]; activeTripId=d.id; activeTripData={id:d.id,...d.data()};
-  $("tripForm")?.classList.add("hidden"); $("activeTrip")?.classList.remove("hidden");
-  if ($("tripNumber")) $("tripNumber").textContent=d.id;
-  if ($("activeSummary")) $("activeSummary").innerHTML=`<div class="summary-item"><small>Vehicle</small><strong>${esc(activeTripData.vehicleNo)}</strong></div><div class="summary-item"><small>From</small><strong>${esc(activeTripData.from||"")}</strong></div><div class="summary-item"><small>Opening KM</small><strong>${esc(activeTripData.openingKm)}</strong></div><div class="summary-item"><small>Destination</small><strong>${esc((activeTripData.destinations||[]).join(", "))}</strong></div>`;
-}
-function bindDriverEvents() {
-  $("vehicle")?.addEventListener("change",()=>{
-    const v=vehicleData.find(x=>x.id===$("vehicle").value);
-    if ($("openingKm")) $("openingKm").value=v?vehicleCurrentKm(v):"";
-  });
-  $("requestedEmployee")?.addEventListener("change",()=>{
-    const manual=$("requestedEmployee").value==="manual";
-    $("manualEmployeeWrap")?.classList.toggle("hidden",!manual);
-    if ($("manualEmployee")) $("manualEmployee").required=manual;
-  });
-  $("addDestination")?.addEventListener("click",()=>addDriverDestination("destinationList"));
-  $("addClosingDestination")?.addEventListener("click",()=>addDriverDestination("closingDestinationList"));
-  ["destinationList","closingDestinationList"].forEach(id=>$(id)?.addEventListener("click",e=>{if(e.target.classList.contains("remove-destination"))e.target.closest(".destination-row")?.remove();renumberDriverDestinations(id);}));
-  $("tripForm")?.addEventListener("submit",startDriverTrip);
-  $("endTripForm")?.addEventListener("submit",completeDriverTrip);
-  $("fuelForm")?.addEventListener("submit",saveDriverFuel);
-  document.querySelectorAll("#driverWorkspace .nav[data-view]").forEach(b=>b.addEventListener("click",()=>{
-    document.querySelectorAll("#driverWorkspace .nav").forEach(x=>x.classList.toggle("active",x===b));
-    document.querySelectorAll("#driverWorkspace .view").forEach(x=>x.classList.add("hidden"));
-    $(b.dataset.view)?.classList.remove("hidden");
-    if ($("welcomeTitle")) $("welcomeTitle").textContent=b.dataset.view==="fuelView"?"Fuel Entry":"Trip Entry";
-  }));
-}
-function addDriverDestination(containerId) {
-  const box=$(containerId); if(!box)return;
-  const row=document.createElement("div"); row.className="destination-row";
-  const number=document.createElement("span");number.className="destination-number";number.textContent=String(box.children.length+1);
-  const input=document.createElement("input");input.placeholder="Enter destination";input.required=containerId==="destinationList";
-  const remove=document.createElement("button");remove.type="button";remove.className="remove-destination";remove.textContent="×";
-  row.append(number,input,remove);box.appendChild(row);
-}
-function renumberDriverDestinations(id){$(id)?.querySelectorAll(".destination-number").forEach((x,i)=>x.textContent=String(i+1));}
-function getDriverDestinations(id){return [...($(id)?.querySelectorAll("input")||[])].map(x=>x.value.trim()).filter(Boolean);}
-async function startDriverTrip(e) {
-  e.preventDefault(); if(!isDriver())return;
-  try {
-    const vehicle=vehicleData.find(v=>v.id===$("vehicle").value);
-    const opening=Number($("openingKm").value);
-    const destinations=getDriverDestinations("destinationList");
-    const from=$("driverFrom")?.value.trim() || "";
-    if(!from)throw new Error("Enter the starting location.");
-    if(!vehicle)throw new Error("Select an authorised vehicle.");
-    if(!Number.isFinite(opening)||opening<0)throw new Error("Vehicle current KM is not valid.");
-    if(!destinations.length)throw new Error("Enter at least one destination.");
-    const activeQ=query(collection(db,COLLECTION.trips),where("driverUid","==",currentUser.uid),where("status","==","active"),limit(1));
-    const existing=await getDocs(activeQ); if(!existing.empty)throw new Error("You already have an active trip.");
-    const requested=$("requestedEmployee").value==="manual"?$("manualEmployee").value.trim():$("requestedEmployee").value;
-    const ref=await addDoc(collection(db,COLLECTION.trips),{
-      driverUid:currentUser.uid,driverName:profileName(),vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),openingKm:opening,
-      department:$("department").value,requestedEmployee:requested,purpose:$("purpose").value.trim(),tripDate:$("tripDate").value||todayISO(),
-      from,startTime:$("startTime").value,destinations,status:"active",createdAt:serverTimestamp()
-    });
-    activeTripId=ref.id; activeTripData={id:ref.id,vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),from,openingKm:opening,destinations};
-    await loadActiveTrip(); toast("Trip started successfully.");
-  } catch(error) { console.error("START TRIP ERROR",error); alert(error.message||"Unable to start trip. Check Firestore rules."); }
-}
-async function completeDriverTrip(e) {
-  e.preventDefault(); if(!activeTripId||!activeTripData)return alert("No active trip found.");
-  const closing=Number($("closingKm").value); const opening=Number(activeTripData.openingKm);
-  if(!Number.isFinite(closing)||closing<opening)return alert("Closing KM cannot be less than Opening KM.");
-  try {
-    const tripRef=doc(db,COLLECTION.trips,activeTripId);
-    await updateDoc(tripRef,{
-      closingKm:closing,endTime:$("endTime").value,remarks:$("remarks").value||"",
-      additionalDestinations:getDriverDestinations("closingDestinationList"),distanceKm:closing-opening,
-      status:"completed",completedAt:serverTimestamp()
-    });
-    // Trip completion is saved first. Vehicle KM is a separate protected update.
-    const vehicle=vehicleData.find(v=>v.id===activeTripData.vehicleId||normaliseVehicle(vehicleNumber(v))===normaliseVehicle(activeTripData.vehicleNo));
-    let kmUpdated=false;
-    if(vehicle && vehicle.assignedDriverUid===currentUser.uid) {
-      try {
-        await updateDoc(doc(db,COLLECTION.vehicles,vehicle.id),{currentKm:closing,lastClosingKm:closing,lastTripDate:todayISO(),updatedAt:serverTimestamp()});
-        kmUpdated=true;
-      } catch(kmError) {
-        console.error("TRIP SAVED BUT VEHICLE KM UPDATE FAILED",kmError);
-      }
-    }
-    activeTripId=null;activeTripData=null;
-    $("endTripForm")?.reset();if($("closingDestinationList"))$("closingDestinationList").innerHTML="";
-    await loadDriverLists();await loadActiveTrip();
-    alert(kmUpdated?"Trip completed. Vehicle current KM updated.":"Trip was completed and saved. Vehicle current KM was not updated; ask the administrator to reconcile it or check Vehicle update rules.");
-  } catch(error) { console.error("COMPLETE TRIP ERROR",error); alert(error.message||"Unable to complete trip. Check Firestore rules."); }
-}
-async function saveDriverFuel(e) {
-  e.preventDefault();
-  try {
-    const vehicle=vehicleData.find(v=>v.id===$("fuelVehicle").value);
-    const litres=Number($("fuelLitres").value),amount=Number($("fuelAmount").value),km=Number($("fuelKm").value);
-    if(!vehicle||litres<=0||amount<0||km<0)throw new Error("Enter valid vehicle, litres, amount and KM.");
-    await addDoc(collection(db,COLLECTION.fuel),{
-      driverUid:currentUser.uid,driverName:profileName(),vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),
-      fuelDate:$("fuelDate").value||todayISO(),litres,amount,km,remarks:$("fuelRemarks").value||"",createdAt:serverTimestamp()
-    });
-    message("fuelMessage","Fuel entry saved successfully.");e.currentTarget.reset();if($("fuelDate"))$("fuelDate").value=todayISO();
-  } catch(error) { console.error("DRIVER FUEL ERROR",error);message("fuelMessage",error.message||"Fuel entry failed.",true); }
-}
-
-/* ---------------- STARTUP ---------------- */
-console.log("MAFARM Vehicle Trip Management loaded.");
-
-/* ---------------- ADMIN DELETE ACTIONS ---------------- */
-async function deleteManagedRecord(kind, id) {
-  if (!isAdmin()) return toast("Only Admin can delete records.", true);
-  const config = {
-    employee: { collection: COLLECTION.employees, label: "employee" },
-    driver: { collection: COLLECTION.users, label: "driver user profile" },
-    trip: { collection: COLLECTION.trips, label: "trip" }
-  }[kind];
-  if (!config || !id) return;
-  const warning = kind === "trip"
-    ? "Delete this trip permanently? This will NOT automatically reverse the vehicle current KM."
-    : kind === "driver"
-      ? "Delete this driver's Firestore User profile? Their Firebase Authentication account will remain and they will no longer pass the active profile check."
-      : "Delete this employee record permanently?";
-  if (!window.confirm(warning)) return;
-  try {
-    await deleteDoc(doc(db, config.collection, id));
-    toast(`${config.label} deleted successfully.`);
-    await refreshAdminData();
-  } catch (error) {
-    console.error("Delete failed:", error);
-    toast(`Could not delete ${config.label}. Check Firestore rules and permissions.`, true);
-  }
-}
-
-document.addEventListener("click", event => {
-  const button = event.target.closest("[data-delete-kind][data-delete-id]");
-  if (!button) return;
-  deleteManagedRecord(button.dataset.deleteKind, button.dataset.deleteId);
-});
-
-
-
-document.addEventListener("click", event => {
-  if (event.target.closest("#exportTripRegisterBtn")) {
-    exportTripRegisterExcel();
-  }
-});
-
-
-/* ---------------- VEHICLE EDIT / STATUS / DELETE ---------------- */
-async function editVehicleRecord(vehicleId) {
-  if (!isAdmin()) return toast("Only Admin can edit vehicles.", true);
-  const v = vehicleData.find(item => item.id === vehicleId);
-  if (!v) return toast("Vehicle record not found. Refresh and try again.", true);
-
-  const oldInitial = Number(val(v, ["initialKm", "InitialKM"], 0));
-  const initialInput = window.prompt(`Update initial KM for ${vehicleNumber(v)}:`, String(oldInitial));
-  if (initialInput === null) return;
-  const initialKm = Number(initialInput);
-  if (!Number.isFinite(initialKm) || initialKm < 0) return toast("Enter a valid non-negative initial KM.", true);
-
-  const currentStatus = vehicleStatusLabel(v);
-  const statusInput = window.prompt(
-    `Enter vehicle status exactly as one of: Active, Under Maintenance, Inactive`,
-    currentStatus
-  );
-  if (statusInput === null) return;
-  const statusMap = {
-    "active": "Active",
-    "under maintenance": "Under Maintenance",
-    "maintenance": "Under Maintenance",
-    "inactive": "Inactive"
-  };
-  const status = statusMap[statusInput.trim().toLowerCase()];
-  if (!status) return toast("Invalid status. Use Active, Under Maintenance or Inactive.", true);
-
-  try {
-    await updateDoc(doc(db, COLLECTION.vehicles, vehicleId), {
-      initialKm,
-      status,
-      active: status === "Active",
-      updatedAt: serverTimestamp(),
-      updatedBy: currentUser.uid
-    });
-    toast("Vehicle initial KM and status updated.");
-    await refreshAdminData();
-  } catch (error) {
-    console.error("VEHICLE UPDATE ERROR", error);
-    toast("Could not update vehicle. Check Firestore update permissions.", true);
-  }
-}
-
-async function deleteVehicleRecord(vehicleId) {
-  if (!isAdmin()) return toast("Only Admin can delete vehicles.", true);
-  const v = vehicleData.find(item => item.id === vehicleId);
-  if (!v) return toast("Vehicle record not found. Refresh and try again.", true);
-  const linkedTrips = tripData.filter(t => t.vehicleId === vehicleId || normaliseVehicle(t.vehicleNo) === normaliseVehicle(vehicleNumber(v)));
-  const warning = `Permanently delete vehicle ${vehicleNumber(v)}? ${linkedTrips.length} trip record(s) reference this vehicle. Those trip records will NOT be deleted.`;
-  if (!window.confirm(warning)) return;
-  try {
-    await deleteDoc(doc(db, COLLECTION.vehicles, vehicleId));
-    toast("Vehicle deleted. Historical trip records were retained.");
-    await refreshAdminData();
-  } catch (error) {
-    console.error("VEHICLE DELETE ERROR", error);
-    toast("Could not delete vehicle. Check Firestore delete permissions.", true);
-  }
-}
-
-document.addEventListener("click", event => {
-  const edit = event.target.closest("[data-vehicle-edit]");
-  if (edit) return editVehicleRecord(edit.dataset.vehicleEdit);
-  const del = event.target.closest("[data-vehicle-delete]");
-  if (del) return deleteVehicleRecord(del.dataset.vehicleDelete);
-});
+        <section id="fuelView" class="view hidden">
+          <form id="fuelForm" class="panel">
+            <div class="panel-heading"><div><h2>Fuel Entry</h2><p class="muted">Record vehicle refuelling details.</p></div><span class="step-tag">FUEL LOG</span></div>
+            <div class="form-grid">
+              <div class="field"><label>Driver</label><input id="fuelDriver" readonly /></div>
+              <div class="field"><label for="fuelVehicle">Vehicle <b>*</b></label><select id="fuelVehicle" required><option value="">Select vehicle</option></select></div>
+              <div class="field"><label for="fuelDate">Date <b>*</b></label><input id="fuelDate" type="date" required /></div>
+              <div class="field"><label for="fuelLitres">Fuel Quantity (Litres) <b>*</b></label><input id="fuelLitres" type="number" min="0.1" step="0.1" required placeholder="e.g. 35" /></div>
+              <div class="field"><label for="fuelAmount">Amount (₹) <b>*</b></label><input id="fuelAmount" type="number" min="0" step="0.01" required placeholder="Enter amount" /></div>
+              <div class="field"><label for="fuelKm">Vehicle KM <b>*</b></label><input id="fuelKm" type="number" min="0" required placeholder="Enter current KM" /></div>
+              <div class="field full-width"><label for="fuelRemarks">Remarks / Bill reference</label><input id="fuelRemarks" placeholder="Pump name, bill number or remarks" /></div>
+            </div>
+            <div class="form-actions"><button type="reset" class="secondary">Clear</button><button class="primary" type="submit">Save Fuel Entry</button></div>
+            <p id="fuelMessage" class="message" aria-live="polite"></p>
+          </form>
+        </section>
+      </section>
+    </div>
+  </main></div><script type="module" src="app.js?v=vehicle-master-1"></script></body></html>
