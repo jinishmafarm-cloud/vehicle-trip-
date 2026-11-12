@@ -73,3 +73,109 @@
 #page-vehicles .form-footer{gap:12px;flex-wrap:wrap}
 @media(max-width:1050px){.vehicle-master-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.vehicle-kpis{grid-template-columns:1fr 1fr}.vehicle-kpi:last-child{grid-column:1/-1}.bulk-actions{flex-direction:column}.bulk-actions button{width:100%}}
+
+/* =========================================================
+   DRIVER WORKSPACE - ISOLATED DESKTOP + MOBILE LAYOUT FIX
+   Keep Admin workspace styles independent.
+========================================================= */
+#driverWorkspace { min-height:100vh; width:100%; overflow-x:hidden; }
+#driverWorkspace #appPage { min-height:100vh; width:100%; }
+#driverWorkspace .topbar {
+  position:relative!important; top:auto!important; z-index:2!important;
+  width:100%; min-height:66px; height:auto; gap:16px;
+  padding:12px clamp(14px,3vw,42px)!important;
+  display:flex; align-items:center; justify-content:space-between;
+}
+#driverWorkspace .app-body {
+  display:grid!important; grid-template-columns:220px minmax(0,1fr)!important;
+  min-height:calc(100vh - 66px); width:100%;
+}
+#driverWorkspace .sidebar {
+  position:relative!important; inset:auto!important; transform:none!important;
+  width:auto!important; min-width:0; height:auto; min-height:calc(100vh - 66px);
+  display:flex!important; flex-direction:column!important; align-items:stretch;
+  padding:22px 13px!important; overflow:visible!important;
+  background:#fff!important; color:#43564a!important;
+  border-right:1px solid var(--line)!important; box-shadow:none!important;
+  z-index:1!important;
+}
+#driverWorkspace .sidebar .nav {
+  display:block; width:100%; min-height:44px; margin:0 0 8px;
+  padding:13px 12px; text-align:left; white-space:normal;
+}
+#driverWorkspace .side-note { margin:28px 10px 0; line-height:1.5; }
+#driverWorkspace .content {
+  position:relative!important; width:100%!important; max-width:1250px!important;
+  min-width:0!important; margin:0 auto!important;
+  padding:30px clamp(16px,3vw,42px)!important;
+  overflow-x:hidden;
+}
+#driverWorkspace .view { display:block; width:100%; }
+#driverWorkspace .view.hidden { display:none!important; }
+#driverWorkspace .panel {
+  width:100%; min-width:0; padding:clamp(16px,2.2vw,26px)!important;
+  overflow:visible;
+}
+#driverWorkspace .form-grid {
+  display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:18px 20px!important; width:100%;
+}
+#driverWorkspace .field { min-width:0; width:100%; }
+#driverWorkspace .field label { display:block; line-height:1.35; }
+#driverWorkspace .field input,
+#driverWorkspace .field select,
+#driverWorkspace .field textarea {
+  display:block; width:100%; min-width:0; min-height:44px;
+  padding:11px 12px; font-size:14px; line-height:1.4;
+}
+#driverWorkspace .field textarea { min-height:90px; }
+#driverWorkspace .full-width { grid-column:1/-1!important; }
+#driverWorkspace .form-actions {
+  display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px;
+  width:100%; margin-top:22px;
+}
+#driverWorkspace .form-actions button { min-height:44px; }
+#driverWorkspace .message { overflow-wrap:anywhere; line-height:1.5; }
+#driverWorkspace .summary-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+#driverWorkspace .destination-row { min-width:0; }
+#driverWorkspace input, #driverWorkspace select, #driverWorkspace textarea {
+  max-width:100%; box-sizing:border-box;
+}
+
+@media (max-width:800px) {
+  #driverWorkspace .topbar { min-height:60px; padding:10px 14px!important; }
+  #driverWorkspace .app-body {
+    grid-template-columns:minmax(0,1fr)!important;
+    min-height:calc(100vh - 60px);
+  }
+  #driverWorkspace .sidebar {
+    position:relative!important; inset:auto!important; transform:none!important;
+    width:100%!important; min-height:0!important; height:auto!important;
+    display:flex!important; flex-direction:row!important; flex-wrap:nowrap;
+    gap:8px; padding:9px 10px!important;
+    border-right:0!important; border-bottom:1px solid var(--line)!important;
+    overflow-x:auto!important; overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  #driverWorkspace .sidebar .nav {
+    flex:1 0 auto; width:auto; min-width:125px; margin:0;
+    text-align:center; padding:12px 10px; white-space:nowrap;
+  }
+  #driverWorkspace .side-note { display:none!important; }
+  #driverWorkspace .content { padding:20px 12px!important; }
+  #driverWorkspace .welcome-row { gap:10px; flex-wrap:wrap; }
+  #driverWorkspace .welcome-row h1 { font-size:22px; }
+  #driverWorkspace .form-grid { grid-template-columns:minmax(0,1fr)!important; gap:14px!important; }
+  #driverWorkspace .full-width { grid-column:auto!important; }
+  #driverWorkspace .summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #driverWorkspace .form-actions { display:grid; grid-template-columns:1fr; }
+  #driverWorkspace .form-actions button { width:100%; }
+}
+@media (max-width:420px) {
+  #driverWorkspace .user-area { gap:7px; font-size:11px; }
+  #driverWorkspace .logout { padding:7px 9px; }
+  #driverWorkspace .brand-inline { font-size:15px; }
+  #driverWorkspace .content { padding:16px 10px!important; }
+  #driverWorkspace .panel { padding:15px!important; border-radius:12px; }
+  #driverWorkspace .summary-grid { grid-template-columns:1fr; }
+}
