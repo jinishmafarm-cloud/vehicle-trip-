@@ -11,7 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, collection, query, where, getDocs,
-  addDoc, updateDoc, serverTimestamp, limit
+  addDoc, updateDoc, setDoc, serverTimestamp, limit
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
 
@@ -232,10 +232,7 @@ function initAdminUI() {
   // Employee form uses explicit IDs added in index.html
   $("employeeForm")?.addEventListener("submit", saveEmployee);
   $("fuelEntryForm")?.addEventListener("submit", saveAdminFuel);
-  $("managedUserForm")?.addEventListener("submit", e => {
-    e.preventDefault();
-    message("managedUserMessage", "On Firebase Spark, create the account in Authentication first, then add its User profile with the exact Authentication UID. This browser form does not create Auth accounts or store passwords.", true);
-  });
+  $("managedUserForm")?.addEventListener("submit", saveManagedUser);
   $("refreshUsersBtn")?.addEventListener("click", loadUsers);
 
   document.querySelectorAll("[data-report]").forEach(b => b.addEventListener("click", () => {
@@ -498,6 +495,50 @@ async function refreshAdminData() {
   populateCommonSelects();
   renderVehicleRegister(); renderEmployeeTable(); renderDriverTable(); renderUserTable(); renderTripTables(); renderFuelTable(); updateDashboardKpis();
 }
+
+async function saveManagedUser(event) {
+  event.preventDefault();
+  if (!currentUser || !isAdmin()) return message("managedUserMessage", "Only an administrator can add user profiles.", true);
+  const uid = $("newUserUid")?.value.trim();
+  const userId = $("newUserId")?.value.trim();
+  const name = $("newUserName")?.value.trim();
+  const role = $("newUserRole")?.value;
+  const email = $("newUserEmail")?.value.trim().toLowerCase();
+  const department = $("newUserDepartment")?.value || "";
+  if (!uid || !userId || !name || !role || !email) return message("managedUserMessage", "Please complete all required fields.", true);
+  const button = $("createManagedUserBtn");
+  setBusy(button, true, "Save Employee Profile");
+  try {
+    const profileRef = doc(db, COLLECTION.users, uid);
+    const existing = await getDoc(profileRef);
+    if (existing.exists()) throw new Error("A User profile already exists for this Authentication UID.");
+    const profile = {
+      "Name": name,
+      "User ID": userId,
+      "Mail ID": email,
+      "Role": role,
+      "Department": department,
+      "Active": true,
+      "Mobile": $("newUserMobile")?.value.trim() || "",
+      "Driver ID": $("newUserDriverId")?.value.trim() || "",
+      "Assigned Vehicle": $("newUserVehicle")?.value.trim().toUpperCase() || "",
+      "Auth UID": uid,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser.uid,
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(profileRef, profile);
+    message("managedUserMessage", "Employee profile saved successfully. The employee can now sign in with the Firebase Authentication email and password.");
+    $("managedUserForm").reset();
+    await refreshAdminData();
+  } catch (error) {
+    console.error("User profile save failed:", error);
+    message("managedUserMessage", error.message || "Could not save employee profile. Check Firestore rules and the Authentication UID.", true);
+  } finally {
+    setBusy(button, false, "Save Employee Profile");
+  }
+}
+
 async function loadUsers() { await refreshAdminData(); toast("User list refreshed."); }
 function renderUserTable() {
   const body = $("managedUsersBody"); if (!body) return;
