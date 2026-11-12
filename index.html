@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAFARM Vehicle Trip Management</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="https://unpkg.com/lucide@latest"></script><link rel="stylesheet" href="style.css"></head><body><div id="loginPage" class="login-shell">
 <section class="login-brand"><div class="brand-mark">✦ MAFARM</div><div><h1>Vehicle Trip<br>Management System</h1><p>Secure vehicle operations, trip records and fuel management.</p></div><small>Manappuram Agro Farms Limited</small></section>
-<section class="login-panel"><h2>Welcome back</h2><p>Sign in using your registered User ID or email.</p><form id="mainLoginForm"><label>User ID / Email</label><input id="mainIdentity" required autocomplete="username" placeholder="Enter User ID or email"><label>Password</label><input id="mainPassword" type="password" required autocomplete="current-password" placeholder="Enter password"><button type="submit" id="mainLoginBtn">Sign in</button><p id="mainLoginMessage" aria-live="polite"></p></form></section></div><div id="adminWorkspace" class="role-workspace" style="display:none">
+<section class="login-panel"><h2>Welcome back</h2><p>Sign in using your MAFARM User ID and password.</p><form id="mainLoginForm"><label>MAFARM User ID</label><input id="mainIdentity" required autocomplete="username" autocapitalize="characters" placeholder="Enter your User ID"><label>Password</label><input id="mainPassword" type="password" required autocomplete="current-password" placeholder="Enter password"><button type="submit" id="mainLoginBtn">Sign in</button><p id="mainLoginMessage" aria-live="polite"></p></form></section></div><div id="adminWorkspace" class="role-workspace" style="display:none">
 <div class="layout">
 <aside class="sidebar" id="sidebar">
   <div class="brand"><span class="leaf">✦</span><span>MAFARM</span></div>
@@ -127,7 +127,7 @@
   <form id="managedUserForm" class="card form-card">
    <div class="card-title"><h2><i data-lucide="user-plus"></i> Add New User</h2></div>
    <div class="form-grid">
-    <div class="field"><label>User ID <b>*</b></label><input id="newUserId" required placeholder="e.g. DRV019"></div>
+    <div class="field"><label>User ID <b>*</b></label><input id="newUserId" required placeholder="e.g. DRIVER1"><small class="login-alias-hint" id="newUserAliasHint">Login alias will be generated from this User ID.</small></div>
     <div class="field"><label>Employee Name <b>*</b></label><input id="newUserName" required placeholder="Full name"></div>
     <div class="field"><label>Role <b>*</b></label><select id="newUserRole" required><option value="">Select role</option><option value="Driver">Driver</option><option value="Admin">Admin</option><option value="User">User</option></select></div>
     <div class="field"><label>Email <b>*</b></label><input id="newUserEmail" type="email" required placeholder="name@mafarm.in"></div>
@@ -137,7 +137,7 @@
     <div class="field"><label>Driver ID (if Driver)</label><input id="newUserDriverId" placeholder="DRV019"></div>
     <div class="field"><label>Assigned Vehicle (optional)</label><input id="newUserVehicle" placeholder="KL 07 AB 1234"></div>
    </div>
-   <div class="form-footer"><small>Free Firebase Spark process: first create the employee login in Firebase Authentication → Add user. Then paste its exact UID here. This form automatically creates the Firestore User profile and never stores passwords.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Save Employee Profile</button></div></div>
+   <div class="form-footer"><small>Free Firebase Spark process: create the Firebase Authentication account using the generated login alias shown after entering the User ID. Then paste its exact Authentication UID here. This form creates the Firestore User profile; passwords are never stored.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Save Employee Profile</button></div></div>
    <p id="managedUserMessage" class="form-message" aria-live="polite"></p>
   </form>
   <section class="card">
