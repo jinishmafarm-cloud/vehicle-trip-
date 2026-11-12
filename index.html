@@ -129,15 +129,15 @@
    <div class="form-grid">
     <div class="field"><label>User ID <b>*</b></label><input id="newUserId" required placeholder="e.g. DRV019"></div>
     <div class="field"><label>Employee Name <b>*</b></label><input id="newUserName" required placeholder="Full name"></div>
-    <div class="field"><label>Role <b>*</b></label><select id="newUserRole" required><option value="">Select role</option><option value="driver">Driver</option><option value="admin">Admin</option></select></div>
+    <div class="field"><label>Role <b>*</b></label><select id="newUserRole" required><option value="">Select role</option><option value="Driver">Driver</option><option value="Admin">Admin</option><option value="User">User</option></select></div>
     <div class="field"><label>Email <b>*</b></label><input id="newUserEmail" type="email" required placeholder="name@mafarm.in"></div>
-    <div class="field"><label>Temporary Password <b>*</b></label><input id="newUserPassword" type="password" minlength="8" required placeholder="Minimum 8 characters"></div>
+    <div class="field"><label>Firebase Authentication UID <b>*</b></label><input id="newUserUid" required placeholder="Paste UID from Firebase Authentication"></div>
     <div class="field"><label>Mobile Number</label><input id="newUserMobile" type="tel" placeholder="Mobile number"></div>
     <div class="field"><label>Department</label><select id="newUserDepartment"><option value="">Select department</option><option>Operations</option><option>Farm</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
     <div class="field"><label>Driver ID (if Driver)</label><input id="newUserDriverId" placeholder="DRV019"></div>
     <div class="field"><label>Assigned Vehicle (optional)</label><input id="newUserVehicle" placeholder="KL 07 AB 1234"></div>
    </div>
-   <div class="form-footer"><small>On Firebase Spark, create the Auth account in Firebase Console first. Then create its User profile using the exact Authentication UID. Never store passwords in Firestore.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Create User Account</button></div></div>
+   <div class="form-footer"><small>Free Firebase Spark process: first create the employee login in Firebase Authentication → Add user. Then paste its exact UID here. This form automatically creates the Firestore User profile and never stores passwords.</small><div><button class="primary-btn" type="submit" id="createManagedUserBtn">Save Employee Profile</button></div></div>
    <p id="managedUserMessage" class="form-message" aria-live="polite"></p>
   </form>
   <section class="card">
