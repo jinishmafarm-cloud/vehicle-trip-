@@ -184,3 +184,8 @@
 .row-delete-btn{border:1px solid #f2c7c4;background:#fff2f1;color:#b42318;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap}
 .row-delete-btn:hover{background:#b42318;color:#fff;border-color:#b42318}
 .row-delete-btn:focus-visible{outline:3px solid #f4aaa5;outline-offset:2px}
+
+.vehicle-actions{display:flex;gap:6px;flex-wrap:wrap}
+.vehicle-edit-btn,.vehicle-delete-btn{border:1px solid #cddfd3;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;background:#f3faf5;color:#075b35;cursor:pointer}
+.vehicle-delete-btn{border-color:#f0c7c3;background:#fff4f2;color:#b42318}
+.vehicle-edit-btn:hover{background:#dff3e6}.vehicle-delete-btn:hover{background:#b42318;color:#fff}
