@@ -578,12 +578,66 @@ function renderDriverTable() {
   const body = $("driverTableBody"); if (!body) return;
   body.innerHTML = driverData.length ? driverData.map(d=>`<tr><td>${esc(val(d,["Driver ID","driverId","User ID","userId"],d.id))}</td><td>${esc(d.name)}</td><td>${esc(val(d,["Mobile","mobile","mobileNumber"],""))}</td><td>Active</td><td><button type="button" class="row-delete-btn" data-delete-kind="driver" data-delete-id="${esc(d.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No driver profiles found.</td></tr>`;
 }
+
+function tripDestinationText(trip) {
+  const parts = [];
+  const add = value => {
+    if (Array.isArray(value)) value.forEach(add);
+    else if (value && typeof value === "object") {
+      const textValue = value.name || value.place || value.location || value.destination || value.address;
+      if (textValue) parts.push(String(textValue).trim());
+    } else if (value !== undefined && value !== null && String(value).trim()) {
+      parts.push(String(value).trim());
+    }
+  };
+  // Driver trip start destinations and destinations added at completion
+  // are stored in different fields in this application.
+  add(trip.destinations);
+  add(trip.additionalDestinations);
+  add(trip.destination);
+  add(trip.to);
+  return [...new Set(parts.filter(Boolean))].join(" → ");
+}
+
+function exportTripRegisterExcel() {
+  if (!isAdmin()) return toast("Only Admin can export the trip register.", true);
+  const rows = [...tripData]
+    .sort((a,b) => String(a.tripDate || "").localeCompare(String(b.tripDate || "")))
+    .map(t => ({
+      "Trip ID": t.id,
+      "Date": t.tripDate || "",
+      "Vehicle": t.vehicleNo || "",
+      "Driver": t.driverName || "",
+      "Department": t.department || "",
+      "From": t.from || "",
+      "Destinations / To": tripDestinationText(t),
+      "Purpose": t.purpose || "",
+      "Requested Employee": t.requestedEmployee || "",
+      "Start Time": t.startTime || "",
+      "End Time": t.endTime || "",
+      "Opening KM": t.openingKm ?? "",
+      "Closing KM": t.closingKm ?? "",
+      "Distance KM": t.distanceKm ?? "",
+      "Status": t.status || "",
+      "Remarks": t.remarks || ""
+    }));
+  if (!rows.length) return toast("No trip records available to export.", true);
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet["!cols"] = Object.keys(rows[0]).map(key => ({
+    wch: Math.max(14, Math.min(34, key.length + 5))
+  }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Trip Register");
+  XLSX.writeFile(workbook, `MAFARM_Trip_Register_${todayISO()}.xlsx`);
+  toast("Trip Register Excel downloaded.");
+}
+
 function renderTripTables() {
   const sorted = [...tripData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
   const latest = $("latestTrips");
-  if (latest) latest.innerHTML = sorted.slice(0,12).map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td><span class="pill ${t.status==="completed"?"completed":"progress"}">${esc(t.status||"")}</span></td></tr>`).join("") || `<tr><td colspan="10">No trip records found.</td></tr>`;
+  if (latest) latest.innerHTML = sorted.slice(0,12).map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.from||"")}</td><td>${esc(tripDestinationText(t))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td><span class="pill ${t.status==="completed"?"completed":"progress"}">${esc(t.status||"")}</span></td></tr>`).join("") || `<tr><td colspan="10">No trip records found.</td></tr>`;
   const body = $("tripRegisterBody");
-  if (body) body.innerHTML = sorted.map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.department||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td>${esc(t.status||"")}</td><td><button type="button" class="row-delete-btn" data-delete-kind="trip" data-delete-id="${esc(t.id)}">Delete</button></td></tr>`).join("") || `<tr><td colspan="12">No trip records found.</td></tr>`;
+  if (body) body.innerHTML = sorted.map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.department||"")}</td><td>${esc(t.from||"")}</td><td>${esc(tripDestinationText(t))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td>${esc(t.status||"")}</td><td><button type="button" class="row-delete-btn" data-delete-kind="trip" data-delete-id="${esc(t.id)}">Delete</button></td></tr>`).join("") || `<tr><td colspan="12">No trip records found.</td></tr>`;
 }
 function renderFuelTable() {
   const sortedFuel = [...fuelData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
@@ -852,3 +906,10 @@ document.addEventListener("click", event => {
   deleteManagedRecord(button.dataset.deleteKind, button.dataset.deleteId);
 });
 
+
+
+document.addEventListener("click", event => {
+  if (event.target.closest("#exportTripRegisterBtn")) {
+    exportTripRegisterExcel();
+  }
+});
