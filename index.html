@@ -37,7 +37,7 @@
 <section class="page active" id="page-dashboard">
  <div class="page-head"><div><div class="eyebrow">OVERVIEW</div><h1>Admin Dashboard</h1><p>Daily vehicle operations at a glance.</p></div><div class="today-chip"><i data-lucide="calendar-days"></i><span id="today"></span></div></div>
  <div class="stats">
-  <div class="stat s-green"><span><i data-lucide="route"></i></span><div><small>Today's Trips</small><strong id="kpiTrips">36</strong></div></div>
+  <div class="stat s-green"><span><i data-lucide="route"></i></span><div><small>Today's Trips</small><strong id="kpiTrips">0</strong></div></div>
   <div class="stat s-blue"><span><i data-lucide="gauge"></i></span><div><small>Total KM Today</small><strong id="kpiKmToday">0</strong></div></div>
   <div class="stat s-amber"><span><i data-lucide="fuel"></i></span><div><small>Fuel Consumed</small><strong><span id="kpiFuelToday">0</span> <em>Ltr</em></strong></div></div>
   <div class="stat s-purple"><span><i data-lucide="chart-no-axes-combined"></i></span><div><small>Average Efficiency</small><strong><span id="kpiEfficiency">0</span> <em>km/l</em></strong></div></div>
@@ -59,7 +59,7 @@
    <div class="snapshot-row"><div class="snap-icon green"><i data-lucide="car-front"></i></div><div><b>Trips in Progress</b><small>Vehicles currently on trip</small></div><strong>04</strong></div>
    <div class="snapshot-row"><div class="snap-icon amber"><i data-lucide="fuel"></i></div><div><b>Fuel Entries Today</b><small>Refuelling records submitted</small></div><strong>12</strong></div>
    <div class="snapshot-row"><div class="snap-icon blue"><i data-lucide="users"></i></div><div><b>Registered Employees</b><small>Active employee master records</small></div><strong>126</strong></div>
-   <div class="snapshot-row"><div class="snap-icon purple"><i data-lucide="truck"></i></div><div><b>Vehicles Under Maintenance</b><small>Currently unavailable</small></div><strong>02</strong></div>
+   <div class="snapshot-row"><div class="snap-icon purple"><i data-lucide="truck"></i></div><div><b>Vehicles Under Maintenance</b><small>Currently unavailable</small></div><strong id="snapMaintenance">0</strong></div>
   </section>
  </div>
  <section class="card recent-card">
@@ -111,7 +111,7 @@
 <!-- TRIP REGISTER -->
 <section class="page" id="page-trip-register">
  <div class="page-head"><div><div class="eyebrow">TRIP MANAGEMENT</div><h1>Trip Register</h1><p>Search, filter and review all trip entries.</p></div><button class="btn primary" data-go="trip-entry"><i data-lucide="plus"></i> Add Completed Trip</button></div>
- <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input id="tripSearch" placeholder="Search trip ID, vehicle, driver or place"></div><input type="date"><input type="date"><select><option>All departments</option><option>Farm Operations</option><option>Retail</option></select><select><option>All status</option><option>Completed</option><option>In Progress</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>Department</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th></tr></thead><tbody id="tripRegisterBody"><tr><td colspan="12">No trip records found.</td></tr></tbody></table></div><div class="table-foot">Showing sample records · Pagination will be connected to Firestore</div></div>
+ <div class="card"><div class="register-tools"><div class="search"><i data-lucide="search"></i><input id="tripSearch" placeholder="Search trip ID, vehicle, driver or place"></div><input type="date"><input type="date"><select><option>All departments</option><option>Farm Operations</option><option>Retail</option></select><select><option>All status</option><option>Completed</option><option>In Progress</option></select><button class="btn light">Export Excel</button></div><div class="table-scroll"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>Department</th><th>From</th><th>To</th><th>Opening KM</th><th>Closing KM</th><th>Distance</th><th>Status</th><th>Action</th></tr></thead><tbody id="tripRegisterBody"><tr><td colspan="12">No trip records found.</td></tr></tbody></table></div><div class="table-foot">Showing sample records · Pagination will be connected to Firestore</div></div>
 </section>
 
 <!-- DRIVERS -->
@@ -137,7 +137,7 @@
   </form>
   <section class="card">
    <div class="card-title"><div><h2><i data-lucide="users"></i> Registered Users</h2><p>Accounts currently saved in Firestore.</p></div><button class="outline-btn" type="button" id="refreshUsersBtn">Refresh</button></div>
-   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="6">Loading user records…</td></tr></tbody></table></div>
+   <div class="table-scroll"><table><thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="managedUsersBody"><tr><td colspan="6">Loading user records…</td></tr></tbody></table></div>
   </section>
  </div>
 </section>
@@ -151,7 +151,7 @@
    <div class="field"><label>License Valid Until</label><input type="date"></div><div class="field"><label>Login User ID <b>*</b></label><input placeholder="Driver login ID" required></div>
    <div class="field"><label>Login Password / Invite</label><input placeholder="Set temporary password"></div><div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
   </div><div class="form-footer"><span>Role will be assigned as Driver.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Driver</button></div></form>
-  <section class="card"><div class="card-title"><h2><i data-lucide="contact-round"></i> Driver List</h2></div><div class="register-tools"><input placeholder="Search driver / ID"><select><option>All status</option><option>Active</option><option>Inactive</option></select></div><div class="table-scroll"><table><thead><tr><th>Driver ID</th><th>Name</th><th>Mobile</th><th>Status</th></tr></thead><tbody id="driverTableBody"><tr><td colspan="5">No driver profiles found.</td></tr></tbody></table></div></section>
+  <section class="card"><div class="card-title"><h2><i data-lucide="contact-round"></i> Driver List</h2></div><div class="register-tools"><input placeholder="Search driver / ID"><select><option>All status</option><option>Active</option><option>Inactive</option></select></div><div class="table-scroll"><table><thead><tr><th>Driver ID</th><th>Name</th><th>Mobile</th><th>Status</th><th>Action</th></tr></thead><tbody id="driverTableBody"><tr><td colspan="5">No driver profiles found.</td></tr></tbody></table></div></section>
  </div>
 </section>
 
@@ -165,7 +165,7 @@
    <div class="field"><label>Mobile Number</label><input type="tel" placeholder="Mobile number"></div><div class="field"><label>Email</label><input type="email" placeholder="Email address"></div>
    <div class="field"><label>Status</label><select><option>Active</option><option>Inactive</option></select></div>
   </div><div class="form-footer"><span>Employee can be selected as requested person in a trip.</span><button class="btn primary" type="submit"><i data-lucide="save"></i> Save Employee</button></div></form>
-  <section class="card"><div class="card-title"><h2><i data-lucide="users"></i> Employee List</h2></div><div class="register-tools"><input placeholder="Search employee / ID"><select><option>All departments</option><option>Farm</option><option>Retail</option></select></div><div class="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Status</th></tr></thead><tbody id="employeeTableBody"><tr><td colspan="4">No employee records found.</td></tr></tbody></table></div></section>
+  <section class="card"><div class="card-title"><h2><i data-lucide="users"></i> Employee List</h2></div><div class="register-tools"><input placeholder="Search employee / ID"><select><option>All departments</option><option>Farm</option><option>Retail</option></select></div><div class="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Status</th><th>Action</th></tr></thead><tbody id="employeeTableBody"><tr><td colspan="4">No employee records found.</td></tr></tbody></table></div></section>
  </div>
 </section>
 
