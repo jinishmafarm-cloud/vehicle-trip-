@@ -1,37 +1,19 @@
-
 /* ============================================================
    MAFARM VEHICLE TRIP MANAGEMENT
-   Complete Updated Application
-   Firebase SDK 10.14.1
+   GitHub Pages + Firebase Auth + Firestore
+   Vehicle Master: manual + Excel/CSV bulk import (50+ vehicles)
+   No Cloud Functions required for this version.
 ============================================================ */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-
 import {
-  getAuth,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-
 import {
-  getFirestore,
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  serverTimestamp,
-  updateDoc,
-  limit
+  getFirestore, doc, getDoc, collection, query, where, getDocs,
+  addDoc, updateDoc, serverTimestamp, limit
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-
-
-/* ============================================================
-   1. FIREBASE CONFIGURATION
-============================================================ */
+import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB36kVpDjxZsqdN7ZWVFSYpsU1rrNFDZgk",
@@ -46,1551 +28,705 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-
-/* ============================================================
-   2. GLOBAL VARIABLES
-============================================================ */
-
 const $ = id => document.getElementById(id);
 
 let currentUser = null;
 let currentProfile = null;
-
 let vehicleData = [];
 let employeeData = [];
+let userData = [];
+let tripData = [];
+let fuelData = [];
 let driverData = [];
-
 let activeTripId = null;
-let dashboardLoading = false;
+let activeTripData = null;
+let vehicleImportRows = [];
+let currentReportType = "";
+let adminInitialised = false;
+let driverInitialised = false;
 
-const COLLECTIONS = {
-  trips: "Trips",
-  vehicles: "Vehicles",
-  employees: "Employees",
-  users: "User",
-  fuel: "Fuel"
-};
+const COLLECTION = { users: "User", vehicles: "Vehicles", employees: "Employees", trips: "Trips", fuel: "Fuel" };
 
-
-/* ============================================================
-   3. COMMON FUNCTIONS
-============================================================ */
-
-function valueOf(obj, keys, fallback = "") {
-  for (const key of keys) {
-    if (
-      obj &&
-      obj[key] !== undefined &&
-      obj[key] !== null
-    ) {
-      return obj[key];
-    }
-  }
-
+function val(obj, keys, fallback = "") {
+  for (const key of keys) if (obj && obj[key] !== undefined && obj[key] !== null) return obj[key];
   return fallback;
 }
-
-function safe(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-
-function showMessage(id, message, type = "info") {
-  const element = $(id);
-  if (!element) return;
-
-  element.textContent = message;
-  element.className = "message " + type;
+function profileName(p = currentProfile) { return val(p, ["Name", "name", "employeeName"], "User"); }
+function profileRole(p = currentProfile) { return String(val(p, ["Role", "role"], "")).toLowerCase(); }
+function profileActive(p) { return val(p, ["Active", "active"], false) === true; }
+function isAdmin() { return profileRole() === "admin"; }
+function isDriver() { return profileRole() === "driver"; }
+function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+function toast(message, isError = false) {
+  const el = $("toast");
+  if (!el) { if (isError) console.error(message); else console.log(message); return; }
+  el.textContent = message;
+  el.classList.add("show");
+  el.style.background = isError ? "#a52b25" : "#075b35";
+  clearTimeout(window._mafarmToastTimer);
+  window._mafarmToastTimer = setTimeout(() => el.classList.remove("show"), 3500);
 }
-
-function setLoading(button, loading, originalText = "Submit") {
+function message(id, text, error = false) {
+  const el = $(id); if (!el) return;
+  el.textContent = text;
+  el.style.color = error ? "#b42318" : "#08713a";
+}
+function setBusy(button, busy, label) {
   if (!button) return;
-
-  button.disabled = loading;
-  button.textContent = loading
-    ? "Please wait..."
-    : originalText;
+  button.disabled = busy;
+  if (label) button.textContent = busy ? "Please wait…" : label;
+}
+function normaliseVehicle(value) { return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+function vehicleNumber(v) { return val(v, ["vehicleNo", "vehicleNumber", "VehicleNo", "registrationNumber"], v.id || ""); }
+function vehicleCurrentKm(v) { return Number(val(v, ["currentKm", "lastClosingKm", "initialKm", "InitialKM"], 0)); }
+function activeRecord(record) { return val(record, ["active", "Active"], true) !== false; }
+function formatDate(value) {
+  if (!value) return "";
+  if (value?.toDate) value = value.toDate();
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("en-IN");
+}
+async function readCollection(name) {
+  const snap = await getDocs(collection(db, name));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-function getToday() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-
-  return new Date(now.getTime() - offset * 60000)
-    .toISOString()
-    .slice(0, 10);
+/* ---------------- LOGIN / SESSION ---------------- */
+function showRole(role) {
+  $("loginPage").style.display = "none";
+  $("adminWorkspace").style.display = role === "admin" ? "block" : "none";
+  $("driverWorkspace").style.display = role === "driver" ? "block" : "none";
+  if (role === "admin") initAdminUI();
+  if (role === "driver") initDriverUI();
+  if (window.lucide) window.lucide.createIcons();
 }
 
-function getProfileName(profile = currentProfile) {
-  return valueOf(
-    profile,
-    ["Name", "name", "employeeName"],
-    "User"
-  );
-}
-
-function getProfileRole(profile = currentProfile) {
-  return String(
-    valueOf(profile, ["Role", "role"], "")
-  ).toLowerCase();
-}
-
-function getProfileEmail(profile = currentProfile) {
-  return valueOf(
-    profile,
-    ["Mail ID", "email", "mailId"],
-    ""
-  );
-}
-
-function isAdmin() {
-  return getProfileRole() === "admin";
-}
-
-function isDriver() {
-  return getProfileRole() === "driver";
-}
-
-function isActive(profile) {
-  return valueOf(
-    profile,
-    ["Active", "active"],
-    false
-  ) === true;
-}
-
-
-/* ============================================================
-   4. SCREEN MANAGEMENT
-============================================================ */
-
-function showLogin() {
-  if ($("loginSection")) $("loginSection").hidden = false;
-  if ($("adminWorkspace")) $("adminWorkspace").hidden = true;
-  if ($("appPage")) $("appPage").hidden = true;
-}
-
-function showAdmin() {
-  if ($("loginSection")) $("loginSection").hidden = true;
-  if ($("adminWorkspace")) $("adminWorkspace").hidden = false;
-  if ($("appPage")) $("appPage").hidden = true;
-}
-
-function showDriver() {
-  if ($("loginSection")) $("loginSection").hidden = true;
-  if ($("adminWorkspace")) $("adminWorkspace").hidden = true;
-  if ($("appPage")) $("appPage").hidden = false;
-}
-
-function openUserWorkspace() {
-  if (!currentUser || !currentProfile) return;
-
-  if (isAdmin()) {
-    showAdmin();
-    loadAdminDashboard();
-  } else if (isDriver()) {
-    showDriver();
-    loadDriverWorkspace();
-  } else {
-    signOut(auth);
-    showLogin();
-
-    showMessage(
-      "mainLoginMessage",
-      "Your account role is not authorised.",
-      "error"
-    );
-  }
-}
-
-
-/* ============================================================
-   5. FIRESTORE DATA FUNCTIONS
-============================================================ */
-
-async function getCollectionData(collectionName) {
-  const snapshot = await getDocs(
-    collection(db, collectionName)
-  );
-
-  return snapshot.docs.map(item => ({
-    id: item.id,
-    ...item.data()
-  }));
-}
-
-
-/* ============================================================
-   6. LOGIN
-============================================================ */
-
-function resolveLoginIdentity(identity) {
-  const cleaned = identity.trim();
-
-  if (cleaned === "150884") {
-    return "operationhead@mafarm.in";
-  }
-
-  return cleaned;
-}
-
-$("mainLoginForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  const identity = $("mainIdentity")?.value.trim();
-  const password = $("mainPassword")?.value;
-
-  if (!identity || !password) {
-    showMessage(
-      "mainLoginMessage",
-      "Enter User ID / Email and Password.",
-      "error"
-    );
-    return;
-  }
-
+$("mainLoginForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
   const button = $("mainLoginBtn");
-  setLoading(button, true, "Login");
-
+  const output = $("mainLoginMessage");
+  button.disabled = true;
+  output.textContent = "Signing in…";
   try {
-    const email = resolveLoginIdentity(identity);
-
-    const credential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-
-    const profileSnap = await getDoc(
-      doc(db, "User", credential.user.uid)
-    );
-
-    if (!profileSnap.exists()) {
-      await signOut(auth);
-
-      throw new Error(
-        "User profile not found. Check the Authentication UID and User document."
-      );
-    }
-
-    const profile = profileSnap.data();
-
-    if (!isActive(profile)) {
-      await signOut(auth);
-      throw new Error("Your account is inactive.");
-    }
-
+    let identity = $("mainIdentity").value.trim();
+    if (identity === "150884") identity = "operationhead@mafarm.in";
+    const credential = await signInWithEmailAndPassword(auth, identity, $("mainPassword").value);
+    const snap = await getDoc(doc(db, COLLECTION.users, credential.user.uid));
+    if (!snap.exists()) throw new Error("User profile not found. Check the User document ID against Firebase Authentication UID.");
+    const p = snap.data();
+    const role = profileRole(p);
+    if (!profileActive(p) || !["admin", "driver"].includes(role)) throw new Error("Account inactive or role not permitted. Check Active and Role fields in User profile.");
     currentUser = credential.user;
-    currentProfile = profile;
-
-    openUserWorkspace();
-
+    currentProfile = p;
+    showRole(role);
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
-
-    showMessage(
-      "mainLoginMessage",
-      error.message || "Login failed.",
-      "error"
-    );
-
+    console.error("LOGIN ERROR", error);
+    output.textContent = error.code === "auth/invalid-credential" ? "Invalid User ID/email or password." : (error.message || "Login failed.");
   } finally {
-    setLoading(button, false, "Login");
+    button.disabled = false;
+    button.textContent = "Sign in";
   }
 });
-
-
-/* ============================================================
-   7. AUTHENTICATION SESSION
-============================================================ */
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
-    currentUser = null;
-    currentProfile = null;
-    activeTripId = null;
-
-    showLogin();
+    currentUser = null; currentProfile = null;
+    $("loginPage").style.display = "grid";
+    $("adminWorkspace").style.display = "none";
+    $("driverWorkspace").style.display = "none";
     return;
   }
-
   try {
-    const profileSnap = await getDoc(
-      doc(db, "User", user.uid)
-    );
-
-    if (!profileSnap.exists()) {
-      await signOut(auth);
-      showLogin();
-      return;
-    }
-
-    const profile = profileSnap.data();
-
-    if (!isActive(profile)) {
-      await signOut(auth);
-      showLogin();
-      return;
-    }
-
-    currentUser = user;
-    currentProfile = profile;
-
-    openUserWorkspace();
-
+    const snap = await getDoc(doc(db, COLLECTION.users, user.uid));
+    if (!snap.exists()) throw new Error("User profile not found.");
+    const p = snap.data();
+    const role = profileRole(p);
+    if (!profileActive(p) || !["admin", "driver"].includes(role)) throw new Error("Account inactive or role not permitted.");
+    currentUser = user; currentProfile = p;
+    showRole(role);
   } catch (error) {
-    console.error("AUTH SESSION ERROR:", error);
-    showLogin();
-  }
-});
-
-
-/* ============================================================
-   8. LOGOUT
-============================================================ */
-
-async function logoutUser() {
-  try {
+    console.error("SESSION ERROR", error);
     await signOut(auth);
-  } catch (error) {
-    console.error("LOGOUT ERROR:", error);
-    alert("Unable to logout. Please try again.");
   }
-}
-
-$("adminLogoutBtn")?.addEventListener("click", logoutUser);
-$("logoutBtn")?.addEventListener("click", logoutUser);
-
-
-/* ============================================================
-   9. ADMIN NAVIGATION
-============================================================ */
-
-function openAdminPage(pageName) {
-  document.querySelectorAll(".page").forEach(page => {
-    page.classList.remove("active");
-  });
-
-  const selectedPage = $("page-" + pageName);
-
-  if (selectedPage) {
-    selectedPage.classList.add("active");
-  }
-
-  document.querySelectorAll(".nav-link[data-page]").forEach(link => {
-    link.classList.toggle(
-      "active",
-      link.dataset.page === pageName
-    );
-  });
-
-  $("sidebar")?.classList.remove("open");
-}
-
-document.querySelectorAll(".nav-link[data-page]").forEach(link => {
-  link.addEventListener("click", () => {
-    openAdminPage(link.dataset.page);
-  });
 });
 
-document.querySelectorAll("[data-go]").forEach(button => {
-  button.addEventListener("click", () => {
-    openAdminPage(button.dataset.go);
-  });
-});
+async function logout() { adminInitialised = false; driverInitialised = false; await signOut(auth); }
+window.mafarmLogout = logout;
+$("logoutBtn")?.addEventListener("click", logout);
 
-$("menuToggle")?.addEventListener("click", () => {
-  $("sidebar")?.classList.toggle("open");
-});
-
-
-/* ============================================================
-   10. SAFE DROPDOWN FUNCTION
-============================================================ */
-
-function populateSelect(
-  id,
-  items,
-  valueKey,
-  labelKey,
-  placeholder
-) {
+/* ---------------- SHARED SELECTS ---------------- */
+function fillSelect(id, records, valueFn, labelFn, firstLabel = "Select") {
   const select = $(id);
-
-  if (!select || select.tagName !== "SELECT") {
-    console.warn(
-      "Dropdown missing or not a SELECT element:",
-      id
-    );
-    return;
-  }
-
-  if (!Array.isArray(items)) {
-    console.warn("Dropdown data is not an array:", id, items);
-    items = [];
-  }
-
-  const oldValue = select.value;
-
+  if (!select || select.tagName !== "SELECT") return;
+  const old = select.value;
   select.innerHTML = "";
-
-  const defaultOption = document.createElement("option");
-  defaultOption.value = "";
-  defaultOption.textContent = placeholder;
-
-  select.appendChild(defaultOption);
-
-  items.forEach(item => {
-    const value = valueOf(item, [valueKey], item.id);
-
-    const label = valueOf(
-      item,
-      [labelKey, "Name", "name", "employeeName"],
-      value
-    );
-
+  const first = document.createElement("option");
+  first.value = ""; first.textContent = firstLabel;
+  select.appendChild(first);
+  records.forEach(record => {
     const option = document.createElement("option");
-
-    option.value = String(value ?? "");
-    option.textContent = String(label ?? "");
-
+    option.value = String(valueFn(record) ?? "");
+    option.textContent = String(labelFn(record) ?? "");
+    if (record._km !== undefined) option.dataset.km = String(record._km);
     select.appendChild(option);
   });
-
-  const options = Array.from(select.querySelectorAll("option"));
-
-  if (options.some(option => option.value === oldValue)) {
-    select.value = oldValue;
-  }
+  if ([...select.options].some(o => o.value === old)) select.value = old;
+}
+function activeVehiclesForAdmin() { return vehicleData.filter(activeRecord); }
+function activeEmployees() { return employeeData.filter(activeRecord); }
+function populateCommonSelects() {
+  const vehicles = activeVehiclesForAdmin().map(v => ({...v, _km: vehicleCurrentKm(v)}));
+  const employees = activeEmployees();
+  fillSelect("adminVehicle", vehicles, v => v.id, v => `${vehicleNumber(v)} — ${vehicleCurrentKm(v).toLocaleString("en-IN")} KM`);
+  fillSelect("adminDriverSelect", driverData, d => d.id, d => d.name || d.id, "Select driver");
+  fillSelect("adminEmployeeSelect", employees, e => e.id, e => `${val(e,["name","employeeName","Name"],e.id)} (${val(e,["employeeId","Employee ID"],e.id)})`, "Select employee");
+  fillSelect("vehicleAssignedDriver", driverData, d => d.id, d => d.name || d.id, "No Driver Assigned");
+  fillSelect("fuelVehicleAdmin", vehicles, v => v.id, v => vehicleNumber(v));
+  fillSelect("fuelDriverAdmin", driverData, d => d.id, d => d.name || d.id, "Select driver");
 }
 
+/* ---------------- ADMIN WORKSPACE ---------------- */
+function initAdminUI() {
+  if (adminInitialised) { refreshAdminData(); return; }
+  adminInitialised = true;
 
-/* ============================================================
-   11. DASHBOARD LOADING
-============================================================ */
-
-async function loadAdminDashboard() {
-  if (dashboardLoading) return;
-
-  dashboardLoading = true;
-
-  console.log("MAFARM Dashboard loading started.");
-
-  const results = {
-    Trips: [],
-    Vehicles: [],
-    Employees: [],
-    User: [],
-    Fuel: []
-  };
-
-  const failedCollections = [];
-
-  try {
-    for (const name of Object.values(COLLECTIONS)) {
-      try {
-        results[name] = await getCollectionData(name);
-
-        console.log(
-          "SUCCESS:",
-          name,
-          results[name].length,
-          "records"
-        );
-
-      } catch (error) {
-        failedCollections.push(name);
-
-        console.error("FAILED COLLECTION:", name);
-        console.error("Firebase error code:", error.code);
-        console.error("Firebase error message:", error.message);
-      }
-    }
-
-    vehicleData = results.Vehicles;
-    employeeData = results.Employees;
-
-    // Support both capitalised and lowercase profile fields.
-    driverData = results.User
-      .filter(user =>
-        String(
-          valueOf(user, ["Role", "role"], "")
-        ).toLowerCase() === "driver"
-      )
-      .map(user => ({
-        ...user,
-        name: valueOf(
-          user,
-          ["Name", "name", "employeeName"],
-          ""
-        ),
-        role: valueOf(user, ["Role", "role"], ""),
-        email: valueOf(
-          user,
-          ["Mail ID", "email", "mailId"],
-          ""
-        )
-      }));
-
-    updateDashboard(
-      results.Trips,
-      results.Vehicles,
-      results.Employees,
-      results.Fuel
-    );
-
-    renderLatestTrips(results.Trips);
-    renderTripRegister(results.Trips);
-    renderVehicles(results.Vehicles);
-    renderEmployees(results.Employees);
-    renderManagedUsers(results.User);
-
-    populateAdminDropdowns();
-
-    if (failedCollections.length) {
-      alert(
-        "Dashboard loaded partially.\n\n" +
-        "Failed collections: " +
-        failedCollections.join(", ") +
-        "\n\nOpen browser Console for details."
-      );
-    } else {
-      console.log("All dashboard collections loaded successfully.");
-    }
-
-  } catch (error) {
-    console.error("DASHBOARD ERROR:", error);
-    alert("Dashboard loading error: " + error.message);
-
-  } finally {
-    dashboardLoading = false;
+  function go(page) {
+    document.querySelectorAll("#adminWorkspace .page").forEach(p => p.classList.remove("active"));
+    $("page-" + page)?.classList.add("active");
+    document.querySelectorAll("#adminWorkspace .nav-link").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+    if (window.innerWidth < 760) $("sidebar")?.classList.remove("open");
+    window.scrollTo({top:0, behavior:"smooth"});
   }
+  document.querySelectorAll("#adminWorkspace [data-page]").forEach(b => b.addEventListener("click", () => go(b.dataset.page)));
+  document.querySelectorAll("#adminWorkspace [data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+  $("menuBtn")?.addEventListener("click", () => $("sidebar")?.classList.toggle("open"));
+  if ($("today")) $("today").textContent = new Intl.DateTimeFormat("en-IN", {day:"2-digit",month:"short",year:"numeric"}).format(new Date());
+  document.querySelectorAll('#adminWorkspace input[type="date"]').forEach(el => { if (!el.value) el.value = todayISO(); });
+
+  // Admin trip entry
+  $("adminVehicle")?.addEventListener("change", e => {
+    const option = e.target.selectedOptions[0];
+    if ($("adminOpeningKm")) $("adminOpeningKm").value = option?.dataset.km || "";
+    calculateAdminDistance();
+  });
+  $("adminClosingKm")?.addEventListener("input", calculateAdminDistance);
+  $("addAdminDestination")?.addEventListener("click", () => addAdminDestinationRow());
+  $("adminDestinations")?.addEventListener("click", e => {
+    if (e.target.classList.contains("remove-dest")) e.target.closest(".destination-line")?.remove();
+    renumberAdminDestinations();
+  });
+  $("adminTripForm")?.addEventListener("submit", saveAdminTrip);
+
+  // Vehicle master and bulk upload
+  $("vehicleMasterForm")?.addEventListener("submit", saveVehicle);
+  $("downloadVehicleTemplate")?.addEventListener("click", downloadVehicleTemplate);
+  $("previewVehicleUpload")?.addEventListener("click", previewVehicleFile);
+  $("importVehiclesBtn")?.addEventListener("click", importVehicleFile);
+  $("vehicleSearch")?.addEventListener("input", filterVehicleRows);
+  $("vehicleStatusFilter")?.addEventListener("change", filterVehicleRows);
+  $("refreshVehiclesBtn")?.addEventListener("click", async () => { await refreshAdminData(); toast("Vehicle list refreshed."); });
+
+  // Employee form uses explicit IDs added in index.html
+  $("employeeForm")?.addEventListener("submit", saveEmployee);
+  $("fuelEntryForm")?.addEventListener("submit", saveAdminFuel);
+  $("managedUserForm")?.addEventListener("submit", e => {
+    e.preventDefault();
+    message("managedUserMessage", "On Firebase Spark, create the account in Authentication first, then add its User profile with the exact Authentication UID. This browser form does not create Auth accounts or store passwords.", true);
+  });
+  $("refreshUsersBtn")?.addEventListener("click", loadUsers);
+
+  document.querySelectorAll("[data-report]").forEach(b => b.addEventListener("click", () => {
+    currentReportType = b.dataset.report;
+    go("reports");
+    if ($("reportTitle")) $("reportTitle").textContent = ({driver:"Driver-wise Report",vehicle:"Vehicle-wise Report",fuel:"Fuel Report",efficiency:"Driver-wise Efficiency"})[currentReportType] || "Report";
+    renderReport();
+  }));
+  $("applyReport")?.addEventListener("click", renderReport);
+  $("dashSearch")?.addEventListener("input", filterDashboardTrips);
+  $("dashStatus")?.addEventListener("change", filterDashboardTrips);
+  $("tripSearch")?.addEventListener("input", filterTripRegister);
+
+  if (window.lucide) window.lucide.createIcons();
+  refreshAdminData();
 }
 
-
-/* ============================================================
-   12. DASHBOARD COUNTS
-============================================================ */
-
-function updateDashboard(trips, vehicles, employees, fuel) {
-  const today = getToday();
-
-  const todayTrips = trips.filter(
-    trip => trip.tripDate === today
-  );
-
-  const activeTrips = trips.filter(
-    trip => String(trip.status || "").toLowerCase() === "active"
-  );
-
-  const totalFuel = fuel.reduce(
-    (sum, item) =>
-      sum + Number(
-        valueOf(item, ["litres", "fuelLitres"], 0)
-      ),
-    0
-  );
-
-  if ($("totalTrips")) {
-    $("totalTrips").textContent = trips.length;
-  }
-
-  if ($("todayTrips")) {
-    $("todayTrips").textContent = todayTrips.length;
-  }
-
-  if ($("activeTrips")) {
-    $("activeTrips").textContent = activeTrips.length;
-  }
-
-  if ($("totalVehicles")) {
-    $("totalVehicles").textContent = vehicles.length;
-  }
-
-  if ($("totalEmployees")) {
-    $("totalEmployees").textContent = employees.length;
-  }
-
-  if ($("totalFuel")) {
-    $("totalFuel").textContent = totalFuel.toFixed(2);
-  }
+function calculateAdminDistance() {
+  const opening = Number($("adminOpeningKm")?.value);
+  const closing = Number($("adminClosingKm")?.value);
+  if ($("adminDistance")) $("adminDistance").value = closing >= opening && opening >= 0 ? (closing - opening) : "";
 }
-
-
-/* ============================================================
-   13. LATEST TRIPS
-============================================================ */
-
-function renderLatestTrips(trips) {
-  const tbody = $("latestTrips");
-  if (!tbody) return;
-
-  const latest = [...trips].reverse().slice(0, 10);
-
-  tbody.innerHTML = latest.map(trip => `
-    <tr>
-      <td>${safe(trip.tripDate)}</td>
-      <td>${safe(trip.driverName)}</td>
-      <td>${safe(trip.vehicleNo)}</td>
-      <td>${safe(trip.purpose)}</td>
-      <td>${safe(trip.status)}</td>
-    </tr>
-  `).join("");
+function addAdminDestinationRow() {
+  const box = $("adminDestinations"); if (!box) return;
+  const row = document.createElement("div"); row.className = "destination-line";
+  row.innerHTML = `<span></span><input placeholder="Additional destination"><button type="button" class="remove-dest">×</button>`;
+  box.appendChild(row); renumberAdminDestinations();
 }
-
-
-/* ============================================================
-   14. TRIP REGISTER
-============================================================ */
-
-function renderTripRegister(trips) {
-  const tbody = $("tripRegisterBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = [...trips].reverse().map(trip => `
-    <tr>
-      <td>${safe(trip.tripDate)}</td>
-      <td>${safe(trip.driverName)}</td>
-      <td>${safe(trip.vehicleNo)}</td>
-      <td>${safe(trip.openingKm)}</td>
-      <td>${safe(trip.closingKm ?? "-")}</td>
-      <td>${safe(trip.distanceKm ?? "-")}</td>
-      <td>${safe(trip.status)}</td>
-    </tr>
-  `).join("");
+function renumberAdminDestinations() {
+  $("adminDestinations")?.querySelectorAll(".destination-line span").forEach((s,i) => s.textContent = String(i+1));
 }
-
-
-/* ============================================================
-   15. VEHICLE MANAGEMENT
-============================================================ */
-
-function renderVehicles(vehicles) {
-  const tbody = $("vehicleTableBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = vehicles.map(vehicle => `
-    <tr>
-      <td>${safe(valueOf(
-        vehicle,
-        ["vehicleNo", "vehicleNumber", "VehicleNo", "registrationNumber"],
-        vehicle.id
-      ))}</td>
-      <td>${safe(valueOf(
-        vehicle,
-        ["vehicleType", "type", "Type"],
-        "-"
-      ))}</td>
-      <td>${safe(valueOf(
-        vehicle,
-        ["currentKm", "lastClosingKm", "initialKm", "InitialKM"],
-        0
-      ))}</td>
-      <td>${valueOf(vehicle, ["active", "Active"], true) === false
-        ? "Inactive" : "Active"}</td>
-    </tr>
-  `).join("");
-}
-
-$("vehicleMasterForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
+async function saveAdminTrip(e) {
+  e.preventDefault();
   if (!isAdmin()) return;
-
-  const button = event.submitter;
-  setLoading(button, true, "Save Vehicle");
-
+  const form = e.currentTarget;
+  const vehicleId = $("adminVehicle")?.value;
+  const driverUid = $("adminDriverSelect")?.value;
+  const vehicle = vehicleData.find(v => v.id === vehicleId);
+  const driver = driverData.find(d => d.id === driverUid);
+  const opening = Number($("adminOpeningKm")?.value);
+  const closing = Number($("adminClosingKm")?.value);
+  if (!vehicle || !driver) return toast("Select a valid vehicle and driver.", true);
+  if (!Number.isFinite(closing) || closing < opening) return toast("Closing KM cannot be less than Opening KM.", true);
+  const get = id => form.querySelector(`#${id}`)?.value?.trim() || "";
+  const inputs = [...form.querySelectorAll("input")];
+  const dateInput = form.querySelector('input[type="date"]');
+  const timeInputs = form.querySelectorAll('input[type="time"]');
+  const textareas = form.querySelectorAll("textarea");
+  const from = $("adminFrom")?.value || "";
+  const to = $("adminTo")?.value || "";
+  const purpose = $("adminPurpose")?.value || "";
+  const destinations = [...($("adminDestinations")?.querySelectorAll("input") || [])].map(x=>x.value.trim()).filter(Boolean);
   try {
-    const vehicleNo = $("vehicleNumber")?.value.trim();
+    await addDoc(collection(db, COLLECTION.trips), {
+      driverUid, driverName: driver.name, vehicleId, vehicleNo: vehicleNumber(vehicle),
+      department: $("adminDepartmentSelect")?.value || "", requestedEmployee: $("adminEmployeeSelect")?.value || "",
+      tripDate: dateInput?.value || todayISO(), startTime: timeInputs[0]?.value || "", endTime: timeInputs[1]?.value || "",
+      from, to, purpose, destinations, openingKm: opening, closingKm: closing, distanceKm: closing-opening,
+      remarks: textareas[0]?.value || "", status:"completed", createdBy:currentUser.uid,
+      createdAt:serverTimestamp(), completedAt:serverTimestamp()
+    });
+    await updateDoc(doc(db, COLLECTION.vehicles, vehicle.id), { currentKm: closing, lastTripClosingKm: closing, lastTripDate: dateInput?.value || todayISO(), updatedAt:serverTimestamp(), updatedBy:currentUser.uid });
+    form.reset();
+    if ($("adminOpeningKm")) $("adminOpeningKm").value = "";
+    if ($("adminDistance")) $("adminDistance").value = "";
+    await refreshAdminData();
+    toast("Completed trip saved and vehicle KM updated.");
+  } catch (error) {
+    console.error("ADMIN TRIP SAVE ERROR", error);
+    toast(error.message || "Trip could not be saved. Check Firestore rules.", true);
+  }
+}
+
+/* ---------------- VEHICLE MASTER ---------------- */
+async function saveVehicle(e) {
+  e.preventDefault();
+  if (!isAdmin()) return;
+  const form = e.currentTarget;
+  const button = $("saveVehicleBtn") || form.querySelector('button[type="submit"]');
+  setBusy(button, true, "Save Vehicle");
+  try {
+    const vehicleNo = $("vehicleNumber")?.value.trim().toUpperCase();
     const vehicleType = $("vehicleType")?.value.trim();
-    const initialKm = Number($("vehicleInitialKm")?.value || 0);
-
-    if (!vehicleNo) {
-      throw new Error("Enter vehicle number.");
-    }
-
-    await addDoc(collection(db, "Vehicles"), {
-      vehicleNo,
-      vehicleType,
-      initialKm,
-      currentKm: initialKm,
-      active: true,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser.uid
+    const initialKm = Number($("vehicleInitialKm")?.value);
+    const driverUid = $("vehicleAssignedDriver")?.value || "";
+    const driver = driverData.find(d => d.id === driverUid);
+    if (!vehicleNo || !vehicleType) throw new Error("Vehicle number and type are required.");
+    if (!Number.isFinite(initialKm) || initialKm < 0) throw new Error("Enter a valid initial KM reading.");
+    if (vehicleData.some(v => normaliseVehicle(vehicleNumber(v)) === normaliseVehicle(vehicleNo))) throw new Error("This vehicle number is already registered.");
+    const status = $("vehicleStatus")?.value || "Active";
+    await addDoc(collection(db, COLLECTION.vehicles), {
+      vehicleNo, vehicleType, fuelType: $("vehicleFuelType")?.value || "",
+      registrationDate: $("vehicleRegistrationDate")?.value || "",
+      department: $("vehicleDepartment")?.value || "Common Pool",
+      initialKm, currentKm: initialKm,
+      assignedDriverUid: driverUid, assignedDriverName: driver?.name || "",
+      status, active: status.toLowerCase() === "active",
+      remarks: $("vehicleRemarks")?.value.trim() || "",
+      createdAt:serverTimestamp(), createdBy:currentUser.uid
     });
-
-    alert("Vehicle saved successfully.");
-
-    event.target.reset();
-
-    vehicleData = await getCollectionData("Vehicles");
-
-    renderVehicles(vehicleData);
-    populateAdminDropdowns();
-
+    form.reset();
+    message("vehicleMessage", "Vehicle registered successfully.");
+    await refreshAdminData();
+    toast("Vehicle saved successfully.");
   } catch (error) {
-    console.error("VEHICLE SAVE ERROR:", error);
-    alert(error.message || "Vehicle saving failed.");
-
-  } finally {
-    setLoading(button, false, "Save Vehicle");
-  }
-});
-
-
-/* ============================================================
-   16. EMPLOYEE MANAGEMENT
-============================================================ */
-
-function renderEmployees(employees) {
-  const tbody = $("employeeTableBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = employees.map(employee => `
-    <tr>
-      <td>${safe(valueOf(
-        employee,
-        ["employeeId", "Employee ID"],
-        employee.id
-      ))}</td>
-      <td>${safe(valueOf(
-        employee,
-        ["name", "employeeName", "Name"],
-        "-"
-      ))}</td>
-      <td>${safe(valueOf(
-        employee,
-        ["department", "Department"],
-        "-"
-      ))}</td>
-    </tr>
-  `).join("");
+    console.error("VEHICLE SAVE ERROR", error);
+    message("vehicleMessage", error.message || "Vehicle registration failed.", true);
+  } finally { setBusy(button, false, "Save Vehicle"); }
 }
-
-$("employeeForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!isAdmin()) return;
-
-  const button = event.submitter;
-  setLoading(button, true, "Save Employee");
-
+function downloadVehicleTemplate(e) {
+  e?.preventDefault();
+  const rows = [
+    ["Vehicle No","Vehicle Type","Initial KM","Fuel Type","Registration Date","Department","Status","Driver UID","Remarks"],
+    ["KL-08-AB-1234","Car",12500,"Diesel","2026-01-15","Operations","Active","","Example row"]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [{wch:20},{wch:18},{wch:14},{wch:14},{wch:18},{wch:18},{wch:12},{wch:34},{wch:28}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Vehicles");
+  XLSX.writeFile(wb, "MAFARM_Vehicle_Master_Template.xlsx");
+}
+async function previewVehicleFile() {
   try {
-    const employeeId = $("employeeId")?.value.trim();
-    const name = $("employeeName")?.value.trim();
-    const department = $("employeeDepartment")?.value.trim();
-
-    if (!employeeId || !name) {
-      throw new Error("Enter Employee ID and Name.");
-    }
-
-    await addDoc(collection(db, "Employees"), {
-      employeeId,
-      name,
-      department,
-      active: true,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser.uid
+    const file = $("vehicleBulkFile")?.files?.[0];
+    if (!file) throw new Error("Choose an Excel or CSV file first.");
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["xlsx","xls","csv"].includes(ext)) throw new Error("Only XLSX, XLS and CSV files are supported.");
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, {type:"array"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, {defval:""});
+    if (!raw.length) throw new Error("No vehicle rows found in the first worksheet.");
+    vehicleImportRows = raw.map(row => {
+      const find = (...names) => {
+        const key = Object.keys(row).find(k => names.some(n => k.trim().toLowerCase() === n.toLowerCase()));
+        return key === undefined ? "" : row[key];
+      };
+      return {
+        vehicleNo:String(find("Vehicle No","Vehicle Number","vehicleNo","vehicleNumber")).trim().toUpperCase(),
+        vehicleType:String(find("Vehicle Type","Type","vehicleType")).trim(),
+        initialKm:Number(find("Initial KM","InitialKm","KM","Odometer")),
+        fuelType:String(find("Fuel Type","fuelType")).trim(),
+        registrationDate:String(find("Registration Date","registrationDate")).trim(),
+        department:String(find("Department","Assigned Department","department")).trim() || "Common Pool",
+        status:String(find("Status","Vehicle Status","status")).trim() || "Active",
+        driverUid:String(find("Driver UID","Driver ID","driverUid")).trim(),
+        remarks:String(find("Remarks","remarks")).trim()
+      };
     });
-
-    alert("Employee saved successfully.");
-
-    event.target.reset();
-
-    employeeData = await getCollectionData("Employees");
-
-    renderEmployees(employeeData);
-    populateAdminDropdowns();
-
+    renderVehicleImportPreview();
   } catch (error) {
-    console.error("EMPLOYEE SAVE ERROR:", error);
-    alert(error.message || "Employee saving failed.");
-
-  } finally {
-    setLoading(button, false, "Save Employee");
-  }
-});
-
-
-/* ============================================================
-   17. ADMIN DROPDOWNS
-============================================================ */
-
-function populateAdminDropdowns() {
-  const activeVehicles = vehicleData.filter(vehicle =>
-    valueOf(vehicle, ["active", "Active"], true) !== false
-  );
-
-  const activeEmployees = employeeData.filter(employee =>
-    valueOf(employee, ["active", "Active"], true) !== false
-  );
-
-  populateSelect(
-    "adminVehicle",
-    activeVehicles,
-    "vehicleNo",
-    "vehicleNo",
-    "Select Vehicle"
-  );
-
-  populateSelect(
-    "adminDriverSelect",
-    driverData,
-    "id",
-    "name",
-    "Select Driver"
-  );
-
-  populateSelect(
-    "adminEmployeeSelect",
-    activeEmployees,
-    "employeeId",
-    "name",
-    "Select Employee"
-  );
-
-  populateSelect(
-    "vehicle",
-    activeVehicles,
-    "vehicleNo",
-    "vehicleNo",
-    "Select Vehicle"
-  );
-
-  populateSelect(
-    "requestedEmployee",
-    activeEmployees,
-    "employeeId",
-    "name",
-    "Select Employee"
-  );
-
-  populateSelect(
-    "fuelVehicle",
-    activeVehicles,
-    "vehicleNo",
-    "vehicleNo",
-    "Select Vehicle"
-  );
-
-  populateSelect(
-    "fuelDriver",
-    driverData,
-    "id",
-    "name",
-    "Select Driver"
-  );
-}
-
-
-/* ============================================================
-   18. ADMIN TRIP ENTRY
-============================================================ */
-
-$("adminTripForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!isAdmin()) return;
-
-  const button = event.submitter;
-  setLoading(button, true, "Save Trip");
-
-  try {
-    const driverUid = $("adminDriverSelect")?.value;
-    const vehicleNo = $("adminVehicle")?.value;
-
-    const openingKm = Number($("adminOpeningKm")?.value);
-    const closingKm = Number($("adminClosingKm")?.value);
-
-    if (!driverUid || !vehicleNo) {
-      throw new Error("Select driver and vehicle.");
-    }
-
-    if (
-      !Number.isFinite(openingKm) ||
-      !Number.isFinite(closingKm) ||
-      closingKm < openingKm
-    ) {
-      throw new Error("Enter valid opening and closing kilometres.");
-    }
-
-    const driver = driverData.find(
-      item => item.id === driverUid
-    );
-
-    await addDoc(collection(db, "Trips"), {
-      driverUid,
-
-      driverName: valueOf(
-        driver,
-        ["name", "Name", "employeeName"],
-        ""
-      ),
-
-      vehicleNo,
-
-      tripDate: $("adminTripDate")?.value || getToday(),
-      startTime: $("adminStartTime")?.value || "",
-      endTime: $("adminEndTime")?.value || "",
-
-      from: $("adminFrom")?.value || "",
-      to: $("adminTo")?.value || "",
-
-      openingKm,
-      closingKm,
-      distanceKm: closingKm - openingKm,
-
-      purpose: $("adminPurpose")?.value || "",
-
-      status: "completed",
-
-      createdBy: currentUser.uid,
-      createdAt: serverTimestamp(),
-      completedAt: serverTimestamp()
-    });
-
-    alert("Trip entry saved successfully.");
-
-    event.target.reset();
-
-    await loadAdminDashboard();
-
-  } catch (error) {
-    console.error("ADMIN TRIP ERROR:", error);
-    alert(error.message || "Trip saving failed.");
-
-  } finally {
-    setLoading(button, false, "Save Trip");
-  }
-});
-
-
-/* ============================================================
-   19. DRIVER WORKSPACE
-============================================================ */
-
-async function loadDriverWorkspace() {
-  const name = getProfileName();
-
-  if ($("loggedUser")) {
-    $("loggedUser").textContent = name;
-  }
-
-  if ($("driverName")) {
-    $("driverName").value = name;
-  }
-
-  if ($("tripDate")) {
-    $("tripDate").value = getToday();
-  }
-
-  if ($("fuelDate")) {
-    $("fuelDate").value = getToday();
-  }
-
-  await loadDriverData();
-  await checkActiveTrip();
-}
-
-async function loadDriverData() {
-  try {
-    const results = await Promise.all([
-      getCollectionData("Vehicles"),
-      getCollectionData("Employees")
-    ]);
-
-    vehicleData = results[0];
-    employeeData = results[1];
-
-    populateAdminDropdowns();
-
-  } catch (error) {
-    console.error("DRIVER DATA ERROR:", error);
+    console.error("VEHICLE FILE PREVIEW ERROR", error);
+    message("vehicleBulkMessage", error.message || "Unable to read file.", true);
+    if ($("importVehiclesBtn")) $("importVehiclesBtn").disabled = true;
   }
 }
-
-
-/* ============================================================
-   20. DRIVER NAVIGATION
-============================================================ */
-
-document.querySelectorAll(".nav[data-view]").forEach(button => {
-  button.addEventListener("click", () => {
-    const view = button.dataset.view;
-
-    document.querySelectorAll(".driver-view").forEach(section => {
-      section.classList.remove("active");
-    });
-
-    $(view)?.classList.add("active");
-
-    document.querySelectorAll(".nav[data-view]").forEach(item => {
-      item.classList.toggle("active", item === button);
-    });
+function validateVehicleImportRows() {
+  const seen = new Set();
+  return vehicleImportRows.map((row,index) => {
+    const key = normaliseVehicle(row.vehicleNo);
+    let error = "";
+    if (!key) error = "Vehicle number missing";
+    else if (seen.has(key)) error = "Duplicate in uploaded file";
+    else if (vehicleData.some(v => normaliseVehicle(vehicleNumber(v)) === key)) error = "Already registered";
+    else if (!row.vehicleType) error = "Vehicle type missing";
+    else if (!Number.isFinite(row.initialKm) || row.initialKm < 0) error = "Invalid initial KM";
+    else if (row.driverUid && !driverData.some(d => d.id === row.driverUid)) error = "Driver UID not found";
+    if (key) seen.add(key);
+    return {...row, rowNumber:index+2, error};
   });
-});
-
-
-/* ============================================================
-   21. DESTINATION MANAGEMENT
-============================================================ */
-
-function addDestinationRow(
-  containerId,
-  placeholder = "Enter destination"
-) {
-  const container = $(containerId);
-  if (!container) return;
-
-  const row = document.createElement("div");
-  row.className = "destination-row";
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = placeholder;
-  input.required = true;
-
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.textContent = "Remove";
-
-  remove.addEventListener("click", () => row.remove());
-
-  row.append(input, remove);
-  container.appendChild(row);
 }
-
-$("addDestination")?.addEventListener("click", () => {
-  addDestinationRow("destinationList");
-});
-
-$("addClosingDestination")?.addEventListener("click", () => {
-  addDestinationRow("closingDestinationList");
-});
-
-function getDestinations(containerId) {
-  const container = $(containerId);
-  if (!container) return [];
-
-  return Array.from(
-    container.querySelectorAll("input")
-  )
-    .map(input => input.value.trim())
-    .filter(Boolean);
+function renderVehicleImportPreview() {
+  const box = $("vehicleUploadPreview"); if (!box) return;
+  const rows = validateVehicleImportRows();
+  const valid = rows.filter(r => !r.error).length;
+  box.innerHTML = `<div class="import-summary"><b>${rows.length}</b> rows · <b>${valid}</b> valid · <b>${rows.length-valid}</b> need correction</div>
+    <div class="table-scroll"><table><thead><tr><th>Excel Row</th><th>Vehicle No</th><th>Type</th><th>Initial KM</th><th>Department</th><th>Driver UID</th><th>Validation</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${r.rowNumber}</td><td>${esc(r.vehicleNo)}</td><td>${esc(r.vehicleType)}</td><td>${esc(r.initialKm)}</td><td>${esc(r.department)}</td><td>${esc(r.driverUid || "—")}</td><td class="${r.error?"validation-error":"validation-ok"}">${esc(r.error || "Valid")}</td></tr>`).join("")}</tbody></table></div>`;
+  if ($("importVehiclesBtn")) $("importVehiclesBtn").disabled = valid === 0;
+  message("vehicleBulkMessage", `${valid} valid vehicle records ready for import.`, valid === 0);
 }
-
-
-/* ============================================================
-   22. START DRIVER TRIP
-============================================================ */
-
-$("tripForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!isDriver()) return;
-
-  const button = event.submitter;
-  setLoading(button, true, "Start Trip");
-
-  try {
-    const vehicleNo = $("vehicle")?.value;
-    const openingKm = Number($("openingKm")?.value);
-
-    const destinations = getDestinations("destinationList");
-
-    if (!vehicleNo) {
-      throw new Error("Select a vehicle.");
-    }
-
-    if (!Number.isFinite(openingKm) || openingKm < 0) {
-      throw new Error("Enter a valid opening KM.");
-    }
-
-    if (!destinations.length) {
-      throw new Error("Enter at least one destination.");
-    }
-
-    const activeQuery = query(
-      collection(db, "Trips"),
-      where("driverUid", "==", currentUser.uid),
-      where("status", "==", "active"),
-      limit(1)
-    );
-
-    const existing = await getDocs(activeQuery);
-
-    if (!existing.empty) {
-      throw new Error(
-        "You already have an active trip. Complete it first."
-      );
-    }
-
-    const tripRef = await addDoc(
-      collection(db, "Trips"),
-      {
-        driverUid: currentUser.uid,
-        driverName: getProfileName(),
-
-        vehicleNo,
-        openingKm,
-
-        department: $("department")?.value || "",
-        requestedEmployee: $("requestedEmployee")?.value || "",
-        manualEmployee: $("manualEmployee")?.value || "",
-
-        tripDate: $("tripDate")?.value || getToday(),
-        startTime: $("startTime")?.value || "",
-        purpose: $("purpose")?.value || "",
-
-        destinations,
-
-        status: "active",
-
-        createdAt: serverTimestamp()
-      }
-    );
-
-    activeTripId = tripRef.id;
-
-    alert("Trip started successfully.");
-
-    event.target.reset();
-
-    if ($("driverName")) {
-      $("driverName").value = getProfileName();
-    }
-
-    if ($("tripDate")) {
-      $("tripDate").value = getToday();
-    }
-
-    if ($("destinationList")) {
-      $("destinationList").innerHTML = "";
-    }
-
-    await checkActiveTrip();
-
-  } catch (error) {
-    console.error("START TRIP ERROR:", error);
-    alert(error.message || "Unable to start trip.");
-
-  } finally {
-    setLoading(button, false, "Start Trip");
-  }
-});
-
-
-/* ============================================================
-   23. CHECK ACTIVE TRIP
-============================================================ */
-
-async function checkActiveTrip() {
-  try {
-    const activeQuery = query(
-      collection(db, "Trips"),
-      where("driverUid", "==", currentUser.uid),
-      where("status", "==", "active"),
-      limit(1)
-    );
-
-    const snapshot = await getDocs(activeQuery);
-    const activeBox = $("activeTrip");
-
-    if (snapshot.empty) {
-      activeTripId = null;
-
-      if (activeBox) {
-        activeBox.hidden = true;
-      }
-
-      return;
-    }
-
-    const tripDoc = snapshot.docs[0];
-    const trip = tripDoc.data();
-
-    activeTripId = tripDoc.id;
-
-    if (activeBox) {
-      activeBox.hidden = false;
-    }
-
-    if ($("tripNumber")) {
-      $("tripNumber").textContent = tripDoc.id;
-    }
-
-    if ($("activeSummary")) {
-      $("activeSummary").textContent =
-        `${trip.vehicleNo || ""} | Opening KM: ${trip.openingKm || 0} | ` +
-        `Destinations: ${(trip.destinations || []).join(", ")}`;
-    }
-
-  } catch (error) {
-    console.error("ACTIVE TRIP ERROR:", error);
-  }
-}
-
-
-/* ============================================================
-   24. COMPLETE DRIVER TRIP
-============================================================ */
-
-$("endTripForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!isDriver() || !activeTripId) {
-    alert("No active trip found.");
-    return;
-  }
-
-  const button = event.submitter;
-  setLoading(button, true, "Complete Trip");
-
-  try {
-    const closingKm = Number($("closingKm")?.value);
-    const endTime = $("endTime")?.value || "";
-    const remarks = $("remarks")?.value || "";
-
-    const tripRef = doc(db, "Trips", activeTripId);
-    const tripSnap = await getDoc(tripRef);
-
-    if (!tripSnap.exists()) {
-      throw new Error("Trip record not found.");
-    }
-
-    const trip = tripSnap.data();
-
-    if (
-      !Number.isFinite(closingKm) ||
-      closingKm < Number(trip.openingKm)
-    ) {
-      throw new Error(
-        "Closing KM cannot be less than Opening KM."
-      );
-    }
-
-    const additionalDestinations =
-      getDestinations("closingDestinationList");
-
-    await updateDoc(tripRef, {
-      closingKm,
-      endTime,
-      remarks,
-      additionalDestinations,
-
-      distanceKm: closingKm - Number(trip.openingKm),
-
-      status: "completed",
-      completedAt: serverTimestamp()
-    });
-
-    alert("Trip completed successfully.");
-
-    activeTripId = null;
-
-    event.target.reset();
-
-    if ($("closingDestinationList")) {
-      $("closingDestinationList").innerHTML = "";
-    }
-
-    await checkActiveTrip();
-
-  } catch (error) {
-    console.error("COMPLETE TRIP ERROR:", error);
-    alert(error.message || "Unable to complete trip.");
-
-  } finally {
-    setLoading(button, false, "Complete Trip");
-  }
-});
-
-
-/* ============================================================
-   25. DRIVER FUEL ENTRY
-============================================================ */
-
-$("fuelForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!isDriver()) return;
-
-  const button = event.submitter;
-  setLoading(button, true, "Save Fuel");
-
-  try {
-    const litres = Number($("fuelLitres")?.value);
-    const amount = Number($("fuelAmount")?.value);
-    const km = Number($("fuelKm")?.value);
-
-    if (
-      !Number.isFinite(litres) ||
-      !Number.isFinite(amount) ||
-      !Number.isFinite(km) ||
-      litres <= 0 ||
-      amount < 0 ||
-      km < 0
-    ) {
-      throw new Error("Enter valid fuel details.");
-    }
-
-    await addDoc(collection(db, "Fuel"), {
-      driverUid: currentUser.uid,
-      driverName: getProfileName(),
-
-      vehicleNo: $("fuelVehicle")?.value || "",
-      fuelDate: $("fuelDate")?.value || getToday(),
-
-      litres,
-      amount,
-      km,
-
-      remarks: $("fuelRemarks")?.value || "",
-
-      createdAt: serverTimestamp()
-    });
-
-    showMessage(
-      "fuelMessage",
-      "Fuel entry saved successfully.",
-      "success"
-    );
-
-    event.target.reset();
-
-    if ($("fuelDate")) {
-      $("fuelDate").value = getToday();
-    }
-
-  } catch (error) {
-    console.error("DRIVER FUEL ERROR:", error);
-
-    showMessage(
-      "fuelMessage",
-      error.message || "Fuel entry failed.",
-      "error"
-    );
-
-  } finally {
-    setLoading(button, false, "Save Fuel");
-  }
-});
-
-
-/* ============================================================
-   26. ADMIN FUEL ENTRY
-============================================================ */
-
-$("fuelEntryForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
+async function importVehicleFile() {
   if (!isAdmin()) return;
-
-  const button = event.submitter;
-  setLoading(button, true, "Save Fuel");
-
+  const button = $("importVehiclesBtn");
+  const rows = validateVehicleImportRows();
+  const validRows = rows.filter(r => !r.error);
+  if (!validRows.length) return message("vehicleBulkMessage", "No valid records to import.", true);
+  button.disabled = true; button.textContent = "Importing…";
+  let imported = 0; const errors = [];
   try {
-    const litres = Number($("adminFuelLitres")?.value);
-    const amount = Number($("adminFuelAmount")?.value);
-
-    if (
-      !Number.isFinite(litres) ||
-      !Number.isFinite(amount) ||
-      litres <= 0 ||
-      amount < 0
-    ) {
-      throw new Error("Enter valid fuel quantity and amount.");
+    // Firestore writes are performed sequentially to identify any failed row clearly.
+    for (const row of validRows) {
+      try {
+        const driver = driverData.find(d => d.id === row.driverUid);
+        const status = row.status || "Active";
+        await addDoc(collection(db, COLLECTION.vehicles), {
+          vehicleNo:row.vehicleNo, vehicleType:row.vehicleType,
+          initialKm:row.initialKm, currentKm:row.initialKm,
+          fuelType:row.fuelType, registrationDate:row.registrationDate,
+          department:row.department, status,
+          active:status.toLowerCase() === "active",
+          assignedDriverUid:row.driverUid || "", assignedDriverName:driver?.name || "",
+          remarks:row.remarks, createdAt:serverTimestamp(), createdBy:currentUser.uid
+        });
+        imported++;
+      } catch (error) {
+        console.error("Vehicle import row failed", row, error);
+        errors.push(`${row.vehicleNo}: ${error.message}`);
+      }
     }
-
-    await addDoc(collection(db, "Fuel"), {
-      vehicleNo: $("adminFuelVehicle")?.value || "",
-      fuelDate: $("adminFuelDate")?.value || getToday(),
-
-      litres,
-      amount,
-
-      enteredBy: currentUser.uid,
-      createdAt: serverTimestamp()
-    });
-
-    alert("Fuel entry saved successfully.");
-
-    event.target.reset();
-
-    if ($("adminFuelDate")) {
-      $("adminFuelDate").value = getToday();
+    await refreshAdminData();
+    message("vehicleBulkMessage", `Import completed: ${imported} saved; ${validRows.length-imported} failed.`, imported === 0);
+    if (imported) {
+      vehicleImportRows = [];
+      if ($("vehicleUploadPreview")) $("vehicleUploadPreview").innerHTML = "";
+      if ($("vehicleBulkFile")) $("vehicleBulkFile").value = "";
     }
-
-    await loadAdminDashboard();
-
-  } catch (error) {
-    console.error("ADMIN FUEL ERROR:", error);
-    alert(error.message || "Fuel entry failed.");
-
+    if (errors.length) console.error("Bulk import failures", errors);
+    toast(`Vehicle import completed. ${imported} records saved.`);
   } finally {
-    setLoading(button, false, "Save Fuel");
-  }
-});
-
-
-/* ============================================================
-   27. USER MANAGEMENT
-============================================================ */
-
-function renderManagedUsers(users) {
-  const tbody = $("managedUsersBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = users.map(user => `
-    <tr>
-      <td>${safe(valueOf(
-        user,
-        ["User ID", "userId"],
-        "-"
-      ))}</td>
-
-      <td>${safe(valueOf(
-        user,
-        ["Name", "name", "employeeName"],
-        "-"
-      ))}</td>
-
-      <td>${safe(valueOf(
-        user,
-        ["Mail ID", "email", "mailId"],
-        "-"
-      ))}</td>
-
-      <td>${safe(valueOf(
-        user,
-        ["Role", "role"],
-        "-"
-      ))}</td>
-
-      <td>${isActive(user) ? "Active" : "Inactive"}</td>
-    </tr>
-  `).join("");
-}
-
-async function loadManagedUsers() {
-  try {
-    const users = await getCollectionData("User");
-    renderManagedUsers(users);
-
-  } catch (error) {
-    console.error("USER LIST ERROR:", error);
-
-    showMessage(
-      "managedUserMessage",
-      "Unable to load user profiles.",
-      "error"
-    );
+    button.disabled = true; button.textContent = "Import Vehicles";
   }
 }
-
-$("refreshUsersBtn")?.addEventListener(
-  "click",
-  loadManagedUsers
-);
-
-$("managedUserForm")?.addEventListener("submit", event => {
-  event.preventDefault();
-
-  showMessage(
-    "managedUserMessage",
-    "Create the account in Firebase Authentication first. Then add the matching User profile using the exact Authentication UID. This form cannot create Auth accounts on the Spark plan.",
-    "error"
-  );
-});
-
-
-/* ============================================================
-   28. REPORT FILTER
-============================================================ */
-
-$("applyReport")?.addEventListener("click", async () => {
-  try {
-    const from = $("reportFrom")?.value;
-    const to = $("reportTo")?.value;
-
-    const trips = await getCollectionData("Trips");
-
-    const filtered = trips.filter(trip => {
-      const date = trip.tripDate || "";
-
-      if (from && date < from) return false;
-      if (to && date > to) return false;
-
-      return true;
-    });
-
-    renderTripRegister(filtered);
-
-    if ($("reportTitle")) {
-      $("reportTitle").textContent =
-        `Trip Report: ${from || "All"} to ${to || "All"}`;
-    }
-
-  } catch (error) {
-    console.error("REPORT ERROR:", error);
-    alert("Unable to generate report.");
-  }
-});
-
-
-/* ============================================================
-   29. TRIP SEARCH
-============================================================ */
-
-$("tripSearch")?.addEventListener("input", event => {
-  const search = event.target.value.toLowerCase();
-
-  document.querySelectorAll("#tripRegisterBody tr").forEach(row => {
-    row.hidden = !row.textContent
-      .toLowerCase()
-      .includes(search);
+function renderVehicleRegister() {
+  const tbody = $("vehicleTableBody"); if (!tbody) return;
+  const active = vehicleData.filter(activeRecord).length;
+  const inactive = vehicleData.length - active;
+  if ($("vehicleTotal")) $("vehicleTotal").textContent = vehicleData.length;
+  if ($("vehicleActive")) $("vehicleActive").textContent = active;
+  if ($("vehicleInactive")) $("vehicleInactive").textContent = inactive;
+  tbody.innerHTML = vehicleData.length ? [...vehicleData].sort((a,b)=>vehicleNumber(a).localeCompare(vehicleNumber(b))).map(v => `
+    <tr data-status="${activeRecord(v)?"Active":"Inactive"}">
+      <td><b>${esc(vehicleNumber(v))}</b></td><td>${esc(val(v,["vehicleType","type"],"—"))}</td>
+      <td>${Number(val(v,["initialKm","InitialKM"],0)).toLocaleString("en-IN")}</td>
+      <td><b>${vehicleCurrentKm(v).toLocaleString("en-IN")}</b></td>
+      <td>${esc(val(v,["assignedDriverName"],"Unassigned") || "Unassigned")}</td>
+      <td>${esc(val(v,["department","Department"],"Common Pool"))}</td>
+      <td><span class="pill ${activeRecord(v)?"completed":"progress"}">${activeRecord(v)?"Active":"Inactive"}</span></td>
+    </tr>`).join("") : `<tr><td colspan="7" class="empty-cell">No vehicles registered yet. Add a vehicle or import an Excel file.</td></tr>`;
+  filterVehicleRows();
+}
+function filterVehicleRows() {
+  const q = ($("vehicleSearch")?.value || "").toLowerCase();
+  const status = $("vehicleStatusFilter")?.value || "";
+  document.querySelectorAll("#vehicleTableBody tr").forEach(row => {
+    row.hidden = !row.textContent.toLowerCase().includes(q) || (status && row.dataset.status !== status);
   });
-});
+}
 
-
-/* ============================================================
-   30. PRINT REPORT
-============================================================ */
-
-$("printReport")?.addEventListener("click", () => {
-  window.print();
-});
-
-
-/* ============================================================
-   31. INITIAL DATE VALUES
-============================================================ */
-
-document.addEventListener("DOMContentLoaded", () => {
-  if ($("tripDate")) {
-    $("tripDate").value = getToday();
+/* ---------------- ADMIN DATA / TABLES ---------------- */
+async function refreshAdminData() {
+  if (!currentUser || !isAdmin()) return;
+  const names = [COLLECTION.trips,COLLECTION.vehicles,COLLECTION.employees,COLLECTION.users,COLLECTION.fuel];
+  const results = {};
+  for (const name of names) {
+    try { results[name] = await readCollection(name); console.log("SUCCESS:",name,results[name].length,"records"); }
+    catch (error) { results[name] = []; console.error("FAILED COLLECTION:",name,error.code,error.message); }
   }
+  tripData = results.Trips; vehicleData = results.Vehicles; employeeData = results.Employees; userData = results.User; fuelData = results.Fuel;
+  driverData = userData.filter(u => String(val(u,["Role","role"],"")).toLowerCase() === "driver" && activeRecord(u)).map(u => ({...u,name:val(u,["Name","name","employeeName"],"Driver")}));
+  populateCommonSelects();
+  renderVehicleRegister(); renderEmployeeTable(); renderDriverTable(); renderUserTable(); renderTripTables(); renderFuelTable(); updateDashboardKpis();
+}
+async function loadUsers() { await refreshAdminData(); toast("User list refreshed."); }
+function renderUserTable() {
+  const body = $("managedUsersBody"); if (!body) return;
+  body.innerHTML = userData.length ? userData.map(u=>`<tr><td>${esc(val(u,["User ID","userId"],""))}</td><td>${esc(val(u,["Name","name","employeeName"],""))}</td><td>${esc(val(u,["Mail ID","email","mailId"],""))}</td><td>${esc(val(u,["Role","role"],""))}</td><td>${activeRecord(u)?"Active":"Inactive"}</td></tr>`).join("") : `<tr><td colspan="5">No user records found.</td></tr>`;
+}
+function renderEmployeeTable() {
+  const body = $("employeeTableBody"); if (!body) return;
+  body.innerHTML = employeeData.length ? employeeData.map(e=>`<tr><td>${esc(val(e,["employeeId","Employee ID"],e.id))}</td><td>${esc(val(e,["name","Name","employeeName"],""))}</td><td>${esc(val(e,["department","Department"],""))}</td><td>${activeRecord(e)?"Active":"Inactive"}</td></tr>`).join("") : `<tr><td colspan="4">No employee records found.</td></tr>`;
+}
+function renderDriverTable() {
+  const body = $("driverTableBody"); if (!body) return;
+  body.innerHTML = driverData.length ? driverData.map(d=>`<tr><td>${esc(val(d,["Driver ID","driverId","User ID","userId"],d.id))}</td><td>${esc(d.name)}</td><td>${esc(val(d,["Mobile","mobile","mobileNumber"],""))}</td><td>Active</td></tr>`).join("") : `<tr><td colspan="4">No driver profiles found.</td></tr>`;
+}
+function renderTripTables() {
+  const sorted = [...tripData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  const latest = $("latestTrips");
+  if (latest) latest.innerHTML = sorted.slice(0,12).map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td><span class="pill ${t.status==="completed"?"completed":"progress"}">${esc(t.status||"")}</span></td></tr>`).join("") || `<tr><td colspan="10">No trip records found.</td></tr>`;
+  const body = $("tripRegisterBody");
+  if (body) body.innerHTML = sorted.map(t=>`<tr><td>${esc(t.id)}</td><td>${esc(t.tripDate||"")}</td><td>${esc(t.vehicleNo||"")}</td><td>${esc(t.driverName||"")}</td><td>${esc(t.department||"")}</td><td>${esc(t.from||"")}</td><td>${esc((t.destinations||[t.to||""]).filter(Boolean).join(", "))}</td><td>${esc(t.openingKm??"")}</td><td>${esc(t.closingKm??"—")}</td><td>${esc(t.distanceKm??"—")}</td><td>${esc(t.status||"")}</td></tr>`).join("") || `<tr><td colspan="11">No trip records found.</td></tr>`;
+}
+function renderFuelTable() {
+  const sortedFuel = [...fuelData].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  const recentBody = $("fuelRecentBody");
+  if (recentBody) recentBody.innerHTML = sortedFuel.slice(0,8).map(f=>`<tr><td>${esc(f.fuelDate||f.date||"")}</td><td>${esc(f.vehicleNo||"")}</td><td>${esc(f.km??f.odometerKm??"")}</td><td>${esc(f.litres??"")}</td><td>${esc(f.amount??"")}</td></tr>`).join("") || `<tr><td colspan="5">No fuel entries found.</td></tr>`;
+  const body = $("fuelRegisterBody"); if (!body) return;
+  body.innerHTML = sortedFuel.map((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).map(f=>`<tr><td>${esc(f.fuelDate||f.date||"")}</td><td>${esc(f.vehicleNo||"")}</td><td>${esc(f.driverName||"")}</td><td>${esc(f.km??f.odometerKm??"")}</td><td>${esc(f.litres??"")}</td><td>${esc(f.amount??"")}</td><td>${esc(f.station||"")}</td><td>${esc(f.billNo||"")}</td></tr>`).join("") || `<tr><td colspan="8">No fuel records found.</td></tr>`;
+}
+function updateDashboardKpis() {
+  const today = todayISO();
+  const todayTrips = tripData.filter(t=>t.tripDate===today);
+  if ($("kpiTrips")) $("kpiTrips").textContent = todayTrips.length;
+  const activeVehicleCount = vehicleData.filter(activeRecord).length;
+  const activeDriverCount = driverData.length;
+  const stats = document.querySelectorAll("#page-dashboard .stat strong");
+  if (stats[0]) stats[0].textContent = todayTrips.length;
+  if (stats[4]) stats[4].textContent = activeVehicleCount;
+  if (stats[5]) stats[5].textContent = activeDriverCount;
+  const snap = document.querySelectorAll("#page-dashboard .snapshot-row > strong");
+  if (snap[0]) snap[0].textContent = tripData.filter(t=>t.status==="active").length;
+  if (snap[2]) snap[2].textContent = employeeData.filter(activeRecord).length;
+}
+function filterDashboardTrips() {
+  const q = ($("dashSearch")?.value||"").toLowerCase(); const status = ($("dashStatus")?.value||"").toLowerCase();
+  document.querySelectorAll("#latestTrips tr").forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(q)||(status&&!row.textContent.toLowerCase().includes(status));});
+}
+function filterTripRegister() {
+  const q = ($("tripSearch")?.value||"").toLowerCase();
+  document.querySelectorAll("#tripRegisterBody tr").forEach(row=>row.hidden=!row.textContent.toLowerCase().includes(q));
+}
 
-  if ($("fuelDate")) {
-    $("fuelDate").value = getToday();
-  }
+/* ---------------- EMPLOYEE MASTER ---------------- */
+async function saveEmployee(e) {
+  e.preventDefault(); if (!isAdmin()) return;
+  const form=e.currentTarget; const fields=form.querySelectorAll("input,select");
+  const employeeId=fields[0]?.value.trim(); const name=fields[1]?.value.trim(); const department=fields[2]?.value||"";
+  if (!employeeId||!name||!department) return toast("Enter Employee ID, name and department.",true);
+  if (employeeData.some(x=>String(val(x,["employeeId","Employee ID"],"")).toLowerCase()===employeeId.toLowerCase())) return toast("Employee ID already exists.",true);
+  try {
+    await addDoc(collection(db,COLLECTION.employees),{employeeId,name,department,designation:fields[3]?.value||"",mobile:fields[4]?.value||"",email:fields[5]?.value||"",active:(fields[6]?.value||"Active")==="Active",createdAt:serverTimestamp(),createdBy:currentUser.uid});
+    form.reset(); await refreshAdminData(); toast("Employee saved successfully.");
+  } catch(error) { console.error(error); toast(error.message||"Employee save failed.",true); }
+}
 
-  if ($("adminTripDate")) {
-    $("adminTripDate").value = getToday();
-  }
+/* ---------------- ADMIN FUEL ENTRY ---------------- */
+async function saveAdminFuel(e) {
+  e.preventDefault(); if (!isAdmin()) return;
+  const form=e.currentTarget; const selects=form.querySelectorAll("select"); const dates=form.querySelectorAll('input[type="date"]'); const numbers=form.querySelectorAll('input[type="number"]');
+  const vehicleId=selects[0]?.value||""; const driverUid=selects[1]?.value||"";
+  const vehicle=vehicleData.find(v=>v.id===vehicleId); const driver=driverData.find(d=>d.id===driverUid);
+  const date=dates[0]?.value||todayISO(); const km=Number(numbers[0]?.value); const litres=Number(numbers[1]?.value); const amount=Number(numbers[2]?.value);
+  if (!vehicle||!driver||!litres||litres<=0||!Number.isFinite(km)||km<0||amount<0) return toast("Complete all required fuel details.",true);
+  try {
+    await addDoc(collection(db,COLLECTION.fuel),{vehicleId,vehicleNo:vehicleNumber(vehicle),driverUid,driverName:driver.name,fuelDate:date,fuelTime:form.querySelector('input[type="time"]')?.value||"",km,litres,amount,rate:litres?amount/litres:0,station:form.querySelectorAll('input')[4]?.value||"",billNo:form.querySelectorAll('input')[5]?.value||"",remarks:form.querySelector("textarea")?.value||"",enteredBy:currentUser.uid,createdAt:serverTimestamp()});
+    form.reset(); await refreshAdminData(); toast("Fuel entry saved.");
+  } catch(error) { console.error(error); toast(error.message||"Fuel entry failed.",true); }
+}
 
-  if ($("adminFuelDate")) {
-    $("adminFuelDate").value = getToday();
-  }
-});
+/* ---------------- REPORTS ---------------- */
+function renderReport() {
+  const box=document.querySelector(".report-result .empty-report"); if (!box) return;
+  const from=document.querySelector(".report-filters input[type=date]")?.value||"";
+  const to=document.querySelectorAll(".report-filters input[type=date]")[1]?.value||"";
+  let trips=tripData.filter(t=>(!from||t.tripDate>=from)&&(!to||t.tripDate<=to));
+  let title="Report Preview", rows=[];
+  if (currentReportType==="driver") { title="Driver-wise Report"; rows=trips.map(t=>({Driver:t.driverName,Vehicle:t.vehicleNo,Date:t.tripDate,KM:t.distanceKm||0,Status:t.status})); }
+  else if (currentReportType==="vehicle") { title="Vehicle-wise Report"; rows=trips.map(t=>({Vehicle:t.vehicleNo,Date:t.tripDate,Driver:t.driverName,OpeningKM:t.openingKm,ClosingKM:t.closingKm,Distance:t.distanceKm})); }
+  else if (currentReportType==="fuel") { title="Fuel Report"; rows=fuelData.filter(f=>(!from||(f.fuelDate||f.date)>=from)&&(!to||(f.fuelDate||f.date)<=to)).map(f=>({Date:f.fuelDate||f.date,Vehicle:f.vehicleNo,Driver:f.driverName,Litres:f.litres,Amount:f.amount,KM:f.km??f.odometerKm})); }
+  else if (currentReportType==="efficiency") { title="Driver-wise Efficiency"; rows=trips.map(t=>({Driver:t.driverName,Vehicle:t.vehicleNo,DistanceKM:t.distanceKm||0})); }
+  if ($("reportTitle")) $("reportTitle").textContent=title;
+  if (!currentReportType) { box.innerHTML="<i data-lucide=\"chart-no-axes-combined\"></i><b>Select a report above</b><small>Choose a report to view Firestore data.</small>"; return; }
+  box.innerHTML=rows.length?`<div class="table-scroll"><table><thead><tr>${Object.keys(rows[0]).map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc(v??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div><button type="button" class="btn light" id="exportReportBtn">Export Excel</button>`:`<b>No records found for this report.</b>`;
+  $("exportReportBtn")?.addEventListener("click",()=>{const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Report");XLSX.writeFile(wb,`${currentReportType}_report.xlsx`);});
+}
 
+/* ---------------- DRIVER WORKSPACE ---------------- */
+async function initDriverUI() {
+  if (driverInitialised) return;
+  driverInitialised = true;
+  const user=auth.currentUser;
+  if (!user) return;
+  try {
+    const profileSnap=await getDoc(doc(db,COLLECTION.users,user.uid));
+    if (!profileSnap.exists()) throw new Error("Driver profile not found.");
+    currentProfile=profileSnap.data(); currentUser=user;
+    if (!isDriver()||!profileActive(currentProfile)) throw new Error("Driver access is inactive or not permitted.");
+    const name=profileName();
+    if ($("driverName")) $("driverName").value=name;
+    if ($("fuelDriver")) $("fuelDriver").value=name;
+    if ($("loggedUser")) $("loggedUser").textContent=name;
+    $("appPage")?.classList.remove("hidden");
+    document.querySelectorAll('#driverWorkspace input[type="date"]').forEach(x=>{if(!x.value)x.value=todayISO();});
+    await loadDriverLists();
+    await loadActiveTrip();
+    bindDriverEvents();
+  } catch(error) { console.error("DRIVER INIT ERROR",error); alert(error.message); await signOut(auth); }
+}
+async function loadDriverLists() {
+  vehicleData=await readCollection(COLLECTION.vehicles);
+  employeeData=await readCollection(COLLECTION.employees);
+  // Drivers see assigned vehicles plus vehicles not assigned to another driver.
+  const allowed=vehicleData.filter(v=>activeRecord(v)&&(!val(v,["assignedDriverUid"],"")||v.assignedDriverUid===currentUser.uid));
+  fillSelect("vehicle",allowed,v=>v.id,v=>vehicleNumber(v));
+  fillSelect("fuelVehicle",allowed,v=>v.id,v=>vehicleNumber(v));
+  fillSelect("requestedEmployee",employeeData.filter(activeRecord),e=>e.id,e=>`${val(e,["name","Name","employeeName"],e.id)} (${val(e,["employeeId"],e.id)})`,"Select employee");
+}
+async function loadActiveTrip() {
+  const q=query(collection(db,COLLECTION.trips),where("driverUid","==",currentUser.uid),where("status","==","active"),limit(1));
+  const snap=await getDocs(q);
+  if (snap.empty) { activeTripId=null; activeTripData=null; $("activeTrip")?.classList.add("hidden"); $("tripForm")?.classList.remove("hidden"); return; }
+  const d=snap.docs[0]; activeTripId=d.id; activeTripData={id:d.id,...d.data()};
+  $("tripForm")?.classList.add("hidden"); $("activeTrip")?.classList.remove("hidden");
+  if ($("tripNumber")) $("tripNumber").textContent=d.id;
+  if ($("activeSummary")) $("activeSummary").innerHTML=`<div class="summary-item"><small>Vehicle</small><strong>${esc(activeTripData.vehicleNo)}</strong></div><div class="summary-item"><small>Opening KM</small><strong>${esc(activeTripData.openingKm)}</strong></div><div class="summary-item"><small>Destination</small><strong>${esc((activeTripData.destinations||[]).join(", "))}</strong></div>`;
+}
+function bindDriverEvents() {
+  $("vehicle")?.addEventListener("change",()=>{
+    const v=vehicleData.find(x=>x.id===$("vehicle").value);
+    if ($("openingKm")) $("openingKm").value=v?vehicleCurrentKm(v):"";
+  });
+  $("requestedEmployee")?.addEventListener("change",()=>{
+    const manual=$("requestedEmployee").value==="manual";
+    $("manualEmployeeWrap")?.classList.toggle("hidden",!manual);
+    if ($("manualEmployee")) $("manualEmployee").required=manual;
+  });
+  $("addDestination")?.addEventListener("click",()=>addDriverDestination("destinationList"));
+  $("addClosingDestination")?.addEventListener("click",()=>addDriverDestination("closingDestinationList"));
+  ["destinationList","closingDestinationList"].forEach(id=>$(id)?.addEventListener("click",e=>{if(e.target.classList.contains("remove-destination"))e.target.closest(".destination-row")?.remove();renumberDriverDestinations(id);}));
+  $("tripForm")?.addEventListener("submit",startDriverTrip);
+  $("endTripForm")?.addEventListener("submit",completeDriverTrip);
+  $("fuelForm")?.addEventListener("submit",saveDriverFuel);
+  document.querySelectorAll("#driverWorkspace .nav[data-view]").forEach(b=>b.addEventListener("click",()=>{
+    document.querySelectorAll("#driverWorkspace .nav").forEach(x=>x.classList.toggle("active",x===b));
+    document.querySelectorAll("#driverWorkspace .view").forEach(x=>x.classList.add("hidden"));
+    $(b.dataset.view)?.classList.remove("hidden");
+    if ($("welcomeTitle")) $("welcomeTitle").textContent=b.dataset.view==="fuelView"?"Fuel Entry":"Trip Entry";
+  }));
+}
+function addDriverDestination(containerId) {
+  const box=$(containerId); if(!box)return;
+  const row=document.createElement("div"); row.className="destination-row";
+  const number=document.createElement("span");number.className="destination-number";number.textContent=String(box.children.length+1);
+  const input=document.createElement("input");input.placeholder="Enter destination";input.required=containerId==="destinationList";
+  const remove=document.createElement("button");remove.type="button";remove.className="remove-destination";remove.textContent="×";
+  row.append(number,input,remove);box.appendChild(row);
+}
+function renumberDriverDestinations(id){$(id)?.querySelectorAll(".destination-number").forEach((x,i)=>x.textContent=String(i+1));}
+function getDriverDestinations(id){return [...($(id)?.querySelectorAll("input")||[])].map(x=>x.value.trim()).filter(Boolean);}
+async function startDriverTrip(e) {
+  e.preventDefault(); if(!isDriver())return;
+  try {
+    const vehicle=vehicleData.find(v=>v.id===$("vehicle").value);
+    const opening=Number($("openingKm").value);
+    const destinations=getDriverDestinations("destinationList");
+    if(!vehicle)throw new Error("Select an authorised vehicle.");
+    if(!Number.isFinite(opening)||opening<0)throw new Error("Vehicle current KM is not valid.");
+    if(!destinations.length)throw new Error("Enter at least one destination.");
+    const activeQ=query(collection(db,COLLECTION.trips),where("driverUid","==",currentUser.uid),where("status","==","active"),limit(1));
+    const existing=await getDocs(activeQ); if(!existing.empty)throw new Error("You already have an active trip.");
+    const requested=$("requestedEmployee").value==="manual"?$("manualEmployee").value.trim():$("requestedEmployee").value;
+    const ref=await addDoc(collection(db,COLLECTION.trips),{
+      driverUid:currentUser.uid,driverName:profileName(),vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),openingKm:opening,
+      department:$("department").value,requestedEmployee:requested,purpose:$("purpose").value.trim(),tripDate:$("tripDate").value||todayISO(),
+      startTime:$("startTime").value,destinations,status:"active",createdAt:serverTimestamp()
+    });
+    activeTripId=ref.id; activeTripData={id:ref.id,vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),openingKm:opening,destinations};
+    await loadActiveTrip(); toast("Trip started successfully.");
+  } catch(error) { console.error("START TRIP ERROR",error); alert(error.message||"Unable to start trip. Check Firestore rules."); }
+}
+async function completeDriverTrip(e) {
+  e.preventDefault(); if(!activeTripId||!activeTripData)return alert("No active trip found.");
+  const closing=Number($("closingKm").value); const opening=Number(activeTripData.openingKm);
+  if(!Number.isFinite(closing)||closing<opening)return alert("Closing KM cannot be less than Opening KM.");
+  try {
+    const tripRef=doc(db,COLLECTION.trips,activeTripId);
+    await updateDoc(tripRef,{
+      closingKm:closing,endTime:$("endTime").value,remarks:$("remarks").value||"",
+      additionalDestinations:getDriverDestinations("closingDestinationList"),distanceKm:closing-opening,
+      status:"completed",completedAt:serverTimestamp()
+    });
+    // Trip completion is saved first. Vehicle KM is a separate protected update.
+    const vehicle=vehicleData.find(v=>v.id===activeTripData.vehicleId||normaliseVehicle(vehicleNumber(v))===normaliseVehicle(activeTripData.vehicleNo));
+    let kmUpdated=false;
+    if(vehicle && vehicle.assignedDriverUid===currentUser.uid) {
+      try {
+        await updateDoc(doc(db,COLLECTION.vehicles,vehicle.id),{currentKm:closing,lastClosingKm:closing,lastTripDate:todayISO(),updatedAt:serverTimestamp()});
+        kmUpdated=true;
+      } catch(kmError) {
+        console.error("TRIP SAVED BUT VEHICLE KM UPDATE FAILED",kmError);
+      }
+    }
+    activeTripId=null;activeTripData=null;
+    $("endTripForm")?.reset();if($("closingDestinationList"))$("closingDestinationList").innerHTML="";
+    await loadDriverLists();await loadActiveTrip();
+    alert(kmUpdated?"Trip completed. Vehicle current KM updated.":"Trip was completed and saved. Vehicle current KM was not updated; ask the administrator to reconcile it or check Vehicle update rules.");
+  } catch(error) { console.error("COMPLETE TRIP ERROR",error); alert(error.message||"Unable to complete trip. Check Firestore rules."); }
+}
+async function saveDriverFuel(e) {
+  e.preventDefault();
+  try {
+    const vehicle=vehicleData.find(v=>v.id===$("fuelVehicle").value);
+    const litres=Number($("fuelLitres").value),amount=Number($("fuelAmount").value),km=Number($("fuelKm").value);
+    if(!vehicle||litres<=0||amount<0||km<0)throw new Error("Enter valid vehicle, litres, amount and KM.");
+    await addDoc(collection(db,COLLECTION.fuel),{
+      driverUid:currentUser.uid,driverName:profileName(),vehicleId:vehicle.id,vehicleNo:vehicleNumber(vehicle),
+      fuelDate:$("fuelDate").value||todayISO(),litres,amount,km,remarks:$("fuelRemarks").value||"",createdAt:serverTimestamp()
+    });
+    message("fuelMessage","Fuel entry saved successfully.");e.currentTarget.reset();if($("fuelDate"))$("fuelDate").value=todayISO();
+  } catch(error) { console.error("DRIVER FUEL ERROR",error);message("fuelMessage",error.message||"Fuel entry failed.",true); }
+}
 
-console.log(
-  "MAFARM Vehicle Trip Management JavaScript loaded successfully."
-);
+/* ---------------- STARTUP ---------------- */
+console.log("MAFARM Vehicle Trip Management loaded.");
