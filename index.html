@@ -81,7 +81,7 @@
    <div class="form-grid">
     <div class="field"><label>Vehicle Number <b>*</b></label><input id="adminVehicleSearch" list="adminVehicleOptions" placeholder="Type vehicle number..." autocomplete="off" required>
      <datalist id="adminVehicleOptions"></datalist>
-     <select id="adminVehicle" class="vehicle-id-select" required aria-hidden="true" tabindex="-1"><option value="">Select vehicle</option></select></div>
+     <input type="hidden" id="adminVehicle" required></div>
     <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option></select></div>
     <div class="field"><label>Department <b>*</b></label><select id="adminDepartmentSelect" required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
     <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option></select></div>
@@ -300,9 +300,7 @@
                 <label for="vehicle">Select Vehicle <b>*</b></label>
                 <input id="driverVehicleSearch" list="driverVehicleOptions" placeholder="Type vehicle number..." autocomplete="off" required>
                 <datalist id="driverVehicleOptions"></datalist>
-                <select id="vehicle" class="vehicle-id-select" required aria-hidden="true" tabindex="-1">
-                  <option value="">Select vehicle</option>
-                </select>
+                <input type="hidden" id="vehicle" required>
               </div>
               <div class="field">
                 <label for="openingKm">Opening KM</label>
