@@ -189,3 +189,11 @@
 .vehicle-edit-btn,.vehicle-delete-btn{border:1px solid #cddfd3;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;background:#f3faf5;color:#075b35;cursor:pointer}
 .vehicle-delete-btn{border-color:#f0c7c3;background:#fff4f2;color:#b42318}
 .vehicle-edit-btn:hover{background:#dff3e6}.vehicle-delete-btn:hover{background:#b42318;color:#fff}
+
+/* Searchable vehicle picker: visible input + native datalist suggestions */
+.vehicle-id-select{
+  position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+}
+input[list] { width:100%; }
