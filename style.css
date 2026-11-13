@@ -197,3 +197,23 @@
   clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
 }
 input[list] { width:100%; }
+
+/* Single-field searchable vehicle picker */
+#adminVehicleSearch,
+#driverVehicleSearch {
+  display:block;
+  width:100%;
+  min-height:44px;
+  box-sizing:border-box;
+  border:1px solid var(--line, #cfded4);
+  border-radius:9px;
+  background:#fff;
+  padding:11px 38px 11px 13px;
+  color:#183329;
+  font:inherit;
+}
+#adminVehicleSearch:focus,
+#driverVehicleSearch:focus {
+  outline:2px solid rgba(13,120,68,.16);
+  border-color:#16804d;
+}
