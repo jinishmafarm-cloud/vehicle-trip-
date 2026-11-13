@@ -205,50 +205,59 @@ function fillSelect(id, records, valueFn, labelFn, firstLabel = "Select") {
   if ([...select.options].some(o => o.value === old)) select.value = old;
 }
 
-function setupVehicleSearch(inputId, listId, selectId, records, labelFn, onSelect) {
+function setupVehicleSearch(inputId, listId, hiddenId, records, labelFn, onSelect) {
   const input = $(inputId);
   const list = $(listId);
-  const select = $(selectId);
-  if (!input || !list || !select) return;
+  const hidden = $(hiddenId);
+  if (!input || !list || !hidden) return;
 
-  const oldValue = select.value;
+  const oldValue = hidden.value;
   list.innerHTML = "";
-  select.innerHTML = '<option value="">Select vehicle</option>';
+  hidden.value = "";
 
   records.forEach(record => {
-    const id = String(record.id);
-    const label = String(labelFn(record));
     const option = document.createElement("option");
-    option.value = label;
-    option.label = label;
+    option.value = String(labelFn(record));
     list.appendChild(option);
-
-    const hiddenOption = document.createElement("option");
-    hiddenOption.value = id;
-    hiddenOption.textContent = label;
-    if (record._km !== undefined) hiddenOption.dataset.km = String(record._km);
-    select.appendChild(hiddenOption);
   });
 
   const previous = records.find(r => String(r.id) === oldValue);
   input.value = previous ? String(labelFn(previous)) : "";
 
-  const sync = () => {
+  const findMatch = () => {
     const typed = input.value.trim().toLowerCase();
-    const match = records.find(r => String(labelFn(r)).trim().toLowerCase() === typed)
-      || (typed ? records.find(r => String(labelFn(r)).toLowerCase().startsWith(typed)) : null);
-    select.value = match ? String(match.id) : "";
+    if (!typed) return null;
+    // Prefer exact match; otherwise accept a unique prefix match.
+    const exact = records.find(r => String(labelFn(r)).trim().toLowerCase() === typed);
+    if (exact) return exact;
+    const candidates = records.filter(r => String(vehicleNumber(r)).replace(/\s+/g, "").toLowerCase()
+      .startsWith(typed.replace(/\s+/g, "")));
+    if (candidates.length === 1) return candidates[0];
+    return records.find(r => String(labelFn(r)).toLowerCase().startsWith(typed)) || null;
+  };
+
+  const sync = () => {
+    const typed = input.value.trim();
+    const match = findMatch();
+    hidden.value = match ? String(match.id) : "";
     if (onSelect) onSelect(match || null);
-    input.setCustomValidity(typed && !match ? "Select a registered vehicle from the suggestions." : "");
+    input.setCustomValidity(typed && !match ? "Choose a registered vehicle from the suggestions." : "");
   };
-  input.oninput = sync;
-  input.onchange = sync;
-  input.onblur = () => {
-    if (input.value.trim() && !select.value) {
-      input.setCustomValidity("Choose a registered vehicle from the suggestions.");
-      input.reportValidity();
+
+  input.addEventListener("input", sync);
+  input.addEventListener("change", sync);
+  input.addEventListener("blur", () => {
+    sync();
+    if (input.value.trim() && !hidden.value) input.reportValidity();
+  });
+  input.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      input.value = "";
+      hidden.value = "";
+      if (onSelect) onSelect(null);
+      input.setCustomValidity("");
     }
-  };
+  });
   sync();
 }
 
@@ -292,11 +301,7 @@ function initAdminUI() {
   document.querySelectorAll('#adminWorkspace input[type="date"]').forEach(el => { if (!el.value) el.value = todayISO(); });
 
   // Admin trip entry
-  $("adminVehicle")?.addEventListener("change", e => {
-    const option = e.target.selectedOptions[0];
-    if ($("adminOpeningKm")) $("adminOpeningKm").value = option?.dataset.km || "";
-    calculateAdminDistance();
-  });
+
   $("adminClosingKm")?.addEventListener("input", calculateAdminDistance);
   $("addAdminDestination")?.addEventListener("click", () => addAdminDestinationRow());
   $("adminDestinations")?.addEventListener("click", e => {
@@ -867,10 +872,7 @@ async function loadActiveTrip() {
   if ($("activeSummary")) $("activeSummary").innerHTML=`<div class="summary-item"><small>Vehicle</small><strong>${esc(activeTripData.vehicleNo)}</strong></div><div class="summary-item"><small>From</small><strong>${esc(activeTripData.from||"")}</strong></div><div class="summary-item"><small>Opening KM</small><strong>${esc(activeTripData.openingKm)}</strong></div><div class="summary-item"><small>Destination</small><strong>${esc((activeTripData.destinations||[]).join(", "))}</strong></div>`;
 }
 function bindDriverEvents() {
-  $("vehicle")?.addEventListener("change",()=>{
-    const v=vehicleData.find(x=>x.id===$("vehicle").value);
-    if ($("openingKm")) $("openingKm").value=v?vehicleCurrentKm(v):"";
-  });
+
   $("requestedEmployee")?.addEventListener("change",()=>{
     const manual=$("requestedEmployee").value==="manual";
     $("manualEmployeeWrap")?.classList.toggle("hidden",!manual);
