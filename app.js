@@ -204,12 +204,68 @@ function fillSelect(id, records, valueFn, labelFn, firstLabel = "Select") {
   });
   if ([...select.options].some(o => o.value === old)) select.value = old;
 }
+
+function setupVehicleSearch(inputId, listId, selectId, records, labelFn, onSelect) {
+  const input = $(inputId);
+  const list = $(listId);
+  const select = $(selectId);
+  if (!input || !list || !select) return;
+
+  const oldValue = select.value;
+  list.innerHTML = "";
+  select.innerHTML = '<option value="">Select vehicle</option>';
+
+  records.forEach(record => {
+    const id = String(record.id);
+    const label = String(labelFn(record));
+    const option = document.createElement("option");
+    option.value = label;
+    option.label = label;
+    list.appendChild(option);
+
+    const hiddenOption = document.createElement("option");
+    hiddenOption.value = id;
+    hiddenOption.textContent = label;
+    if (record._km !== undefined) hiddenOption.dataset.km = String(record._km);
+    select.appendChild(hiddenOption);
+  });
+
+  const previous = records.find(r => String(r.id) === oldValue);
+  input.value = previous ? String(labelFn(previous)) : "";
+
+  const sync = () => {
+    const typed = input.value.trim().toLowerCase();
+    const match = records.find(r => String(labelFn(r)).trim().toLowerCase() === typed)
+      || (typed ? records.find(r => String(labelFn(r)).toLowerCase().startsWith(typed)) : null);
+    select.value = match ? String(match.id) : "";
+    if (onSelect) onSelect(match || null);
+    input.setCustomValidity(typed && !match ? "Select a registered vehicle from the suggestions." : "");
+  };
+  input.oninput = sync;
+  input.onchange = sync;
+  input.onblur = () => {
+    if (input.value.trim() && !select.value) {
+      input.setCustomValidity("Choose a registered vehicle from the suggestions.");
+      input.reportValidity();
+    }
+  };
+  sync();
+}
+
 function activeVehiclesForAdmin() { return vehicleData.filter(activeRecord); }
 function activeEmployees() { return employeeData.filter(activeRecord); }
 function populateCommonSelects() {
   const vehicles = activeVehiclesForAdmin().map(v => ({...v, _km: vehicleCurrentKm(v)}));
   const employees = activeEmployees();
-  fillSelect("adminVehicle", vehicles, v => v.id, v => `${vehicleNumber(v)} — ${vehicleCurrentKm(v).toLocaleString("en-IN")} KM`);
+  setupVehicleSearch(
+    "adminVehicleSearch", "adminVehicleOptions", "adminVehicle",
+    vehicles,
+    v => `${vehicleNumber(v)} — ${vehicleCurrentKm(v).toLocaleString("en-IN")} KM`,
+    v => {
+      if ($("adminOpeningKm")) $("adminOpeningKm").value = v ? vehicleCurrentKm(v) : "";
+      calculateAdminDistance();
+    }
+  );
   fillSelect("adminDriverSelect", driverData, d => d.id, d => d.name || d.id, "Select driver");
   fillSelect("adminEmployeeSelect", employees, e => e.id, e => `${val(e,["name","employeeName","Name"],e.id)} (${val(e,["employeeId","Employee ID"],e.id)})`, "Select employee");
   fillSelect("vehicleAssignedDriver", driverData, d => d.id, d => d.name || d.id, "No Driver Assigned");
@@ -795,7 +851,9 @@ async function loadDriverLists() {
   employeeData=await readCollection(COLLECTION.employees);
   // Drivers see assigned vehicles plus vehicles not assigned to another driver.
   const allowed=vehicleData.filter(v=>activeRecord(v)&&(!val(v,["assignedDriverUid"],"")||v.assignedDriverUid===currentUser.uid));
-  fillSelect("vehicle",allowed,v=>v.id,v=>vehicleNumber(v));
+  setupVehicleSearch("driverVehicleSearch","driverVehicleOptions","vehicle",allowed,v=>vehicleNumber(v),v=>{
+    if ($("openingKm")) $("openingKm").value = v ? vehicleCurrentKm(v) : "";
+  });
   fillSelect("fuelVehicle",allowed,v=>v.id,v=>vehicleNumber(v));
   fillSelect("requestedEmployee",employeeData.filter(activeRecord),e=>e.id,e=>`${val(e,["name","Name","employeeName"],e.id)} (${val(e,["employeeId"],e.id)})`,"Select employee");
 }
