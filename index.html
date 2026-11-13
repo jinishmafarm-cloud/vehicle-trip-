@@ -79,7 +79,9 @@
  <form id="adminTripForm" class="card form-card">
   <div class="form-section"><div class="section-heading"><span class="section-icon"><i data-lucide="car-front"></i></span><div><h2>Trip & Vehicle Details</h2><p>Choose the vehicle and driver for this trip.</p></div></div>
    <div class="form-grid">
-    <div class="field"><label>Vehicle Number <b>*</b></label><select id="adminVehicle" required><option value="">Select vehicle</option></select></div>
+    <div class="field"><label>Vehicle Number <b>*</b></label><input id="adminVehicleSearch" list="adminVehicleOptions" placeholder="Type vehicle number..." autocomplete="off" required>
+     <datalist id="adminVehicleOptions"></datalist>
+     <select id="adminVehicle" class="vehicle-id-select" required aria-hidden="true" tabindex="-1"><option value="">Select vehicle</option></select></div>
     <div class="field"><label>Driver <b>*</b></label><select id="adminDriverSelect" required><option value="">Select driver</option></select></div>
     <div class="field"><label>Department <b>*</b></label><select id="adminDepartmentSelect" required><option value="">Select department</option><option>Farm Operations</option><option>Retail</option><option>Restaurant</option><option>VAP</option><option>Head Office</option></select></div>
     <div class="field"><label>Requested Employee <b>*</b></label><select id="adminEmployeeSelect" required><option value="">Select employee</option></select></div>
@@ -296,17 +298,16 @@
               </div>
               <div class="field">
                 <label for="vehicle">Select Vehicle <b>*</b></label>
-                <select id="vehicle" required>
+                <input id="driverVehicleSearch" list="driverVehicleOptions" placeholder="Type vehicle number..." autocomplete="off" required>
+                <datalist id="driverVehicleOptions"></datalist>
+                <select id="vehicle" class="vehicle-id-select" required aria-hidden="true" tabindex="-1">
                   <option value="">Select vehicle</option>
-                  <option value="KL 07 AB 4581" data-km="56320">KL 07 AB 4581</option>
-                  <option value="KL 08 CD 2190" data-km="42850">KL 08 CD 2190</option>
-                  <option value="KL 45 M 7712" data-km="71240">KL 45 M 7712</option>
                 </select>
               </div>
               <div class="field">
                 <label for="openingKm">Opening KM</label>
                 <input id="openingKm" type="number" placeholder="Auto-filled after vehicle selection" readonly />
-                <small>Fetched from the vehicle's latest closing KM (demo values)</small>
+                <small>Fetched automatically from the selected vehicle's current KM</small>
               </div>
               <div class="field">
                 <label for="department">Department <b>*</b></label>
